@@ -8,13 +8,30 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 # Core sources (shared between server and test)
 set(CORE_SOURCES
     src/mcp_server.cpp
+    src/board.cpp
 )
 
+if(APPLE)
+    list(APPEND CORE_SOURCES src/camera_list/camera_list_darwin.cpp)
+elseif(UNIX)
+    list(APPEND CORE_SOURCES src/camera_list/camera_list_linux.cpp)
+elseif(WIN32)
+    list(APPEND CORE_SOURCES src/camera_list/camera_list_win.cpp)
+endif()
+
 # Common include dirs
-set(COMMON_INCLUDES src 3rdparty 3rdparty/nlohmann-json/single_include)
+set(COMMON_INCLUDES src src/camera_list 3rdparty 3rdparty/nlohmann-json/single_include)
 
 find_package(Threads REQUIRED)
 set(COMMON_LIBS Threads::Threads)
+
+if(APPLE)
+    list(APPEND COMMON_LIBS "-framework IOKit" "-framework CoreFoundation")
+elseif(UNIX)
+    list(APPEND COMMON_LIBS udev)
+elseif(WIN32)
+    list(APPEND COMMON_LIBS setupapi)
+endif()
 
 # MCP Server executable
 add_executable(openmv_mcp_server ${CORE_SOURCES} src/main.cpp)

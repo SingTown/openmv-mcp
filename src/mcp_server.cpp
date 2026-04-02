@@ -2,12 +2,18 @@
 
 #include <iostream>
 
+#include "camera_list/camera_list.h"
+
 using json = nlohmann::json;
 
 namespace mcp {
 
 static json toolDefinitions() {
-    return json::array();
+    return json::array({
+        {{"name", "list_cameras"},
+         {"description", "Discover connected OpenMV cameras via USB serial port enumeration"},
+         {"inputSchema", {{"type", "object"}, {"properties", json::object()}, {"required", json::array()}}}},
+    });
 }
 
 McpServer::McpServer(int port) : port_(port) {}
@@ -87,7 +93,16 @@ json McpServer::handleToolsList(const json& id) {
 json McpServer::handleToolsCall(const json& params, const json& id) {
     auto name = params.value("name", "");
 
-    // No tools registered yet
+    if (name == "list_cameras") {
+        auto cameras = listCameras();
+        json arr = json::array();
+        for (const auto& cam : cameras) {
+            arr.push_back({{"path", cam.path}, {"displayName", cam.displayName}});
+        }
+        json content = json::array({{{"type", "text"}, {"text", arr.dump(2)}}});
+        return makeResponse(id, {{"content", content}});
+    }
+
     return makeError(id, -32602, "Unknown tool: " + name);
 }
 

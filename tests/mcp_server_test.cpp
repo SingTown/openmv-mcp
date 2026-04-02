@@ -90,7 +90,15 @@ TEST_F(McpServerTest, ToolsList) {
     ASSERT_TRUE(resp.contains("result"));
     auto& tools = resp["result"]["tools"];
     ASSERT_TRUE(tools.is_array());
-    EXPECT_EQ(tools.size(), 0u);
+    EXPECT_GE(tools.size(), 1u);
+    bool found = false;
+    for (const auto& t : tools) {
+        if (t["name"] == "list_cameras") {
+            found = true;
+            break;
+        }
+    }
+    EXPECT_TRUE(found);
 }
 
 TEST_F(McpServerTest, Ping) {
@@ -113,6 +121,18 @@ TEST_F(McpServerTest, InvalidJson) {
     auto resp = json::parse(res->body);
     ASSERT_TRUE(resp.contains("error"));
     EXPECT_EQ(resp["error"]["code"], -32700);
+}
+
+TEST_F(McpServerTest, ListCameras) {
+    auto resp = call_tool(40, "list_cameras");
+    ASSERT_TRUE(resp.contains("result"));
+    auto& content = resp["result"]["content"];
+    ASSERT_TRUE(content.is_array());
+    if (!content.empty()) {
+        EXPECT_EQ(content[0]["type"], "text");
+        auto cameras = json::parse(content[0]["text"].get<std::string>());
+        EXPECT_TRUE(cameras.is_array());
+    }
 }
 
 TEST_F(McpServerTest, UnknownTool) {
