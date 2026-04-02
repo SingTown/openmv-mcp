@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "openmv": {
+      "type": "streamable-http",
+      "url": "http://localhost:15257/mcp"
+    }
+  }
+}

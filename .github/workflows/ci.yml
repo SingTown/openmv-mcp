@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Install tools
+        run: sudo apt-get update && sudo apt-get install -y clang-format clang-tidy
+
+      - name: Configure
+        run: cmake -B build
+
+      - name: Check format
+        run: cmake --build build --target check
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure

@@ -1,0 +1,8 @@
+[submodule "3rdparty/httplib"]
+	path = 3rdparty/httplib
+	url = https://github.com/yhirose/cpp-httplib.git
+	shallow = true
+[submodule "3rdparty/nlohmann-json"]
+	path = 3rdparty/nlohmann-json
+	url = https://github.com/nlohmann/json.git
+	shallow = true
