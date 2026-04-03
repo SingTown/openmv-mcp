@@ -9,25 +9,30 @@ using json = nlohmann::json;
 
 namespace mcp {
 
+static json cameraPathParam() {
+    return {{"cameraPath", {{"type", "string"}, {"description", "Serial port path of the camera"}}}};
+}
+
 static const json& toolDefinitions() {
     static const json defs = json::array({
         {{"name", "list_cameras"},
-         {"description", "Discover connected OpenMV cameras via USB serial port enumeration"},
+         {"description", "List connected OpenMV cameras"},
          {"inputSchema", {{"type", "object"}, {"properties", json::object()}, {"required", json::array()}}}},
-        {{"name", "connect_camera"},
-         {"description", "Connect to an OpenMV camera by opening its serial port"},
+
+        {{"name", "camera_connect"},
+         {"description", "Connect to an OpenMV camera by its serial port path"},
          {"inputSchema",
-          {{"type", "object"},
-           {"properties",
-            {{"path", {{"type", "string"}, {"description", "Serial port path (e.g. /dev/cu.usbmodem1234)"}}}}},
-           {"required", json::array({"path"})}}}},
-        {{"name", "disconnect_camera"},
-         {"description", "Disconnect from a connected OpenMV camera"},
+          {{"type", "object"}, {"properties", cameraPathParam()}, {"required", json::array({"cameraPath"})}}}},
+
+        {{"name", "camera_disconnect"},
+         {"description", "Disconnect from a connected camera"},
          {"inputSchema",
-          {{"type", "object"},
-           {"properties",
-            {{"path", {{"type", "string"}, {"description", "Serial port path of the connected camera"}}}}},
-           {"required", json::array({"path"})}}}},
+          {{"type", "object"}, {"properties", cameraPathParam()}, {"required", json::array({"cameraPath"})}}}},
+
+        {{"name", "camera_info"},
+         {"description", "Get detailed information about a connected camera"},
+         {"inputSchema",
+          {{"type", "object"}, {"properties", cameraPathParam()}, {"required", json::array({"cameraPath"})}}}},
     });
     return defs;
 }
@@ -40,6 +45,7 @@ McpServer::~McpServer() {
 
 void McpServer::start() {
     server_.Post("/mcp", [this](const httplib::Request& req, httplib::Response& res) {
+        res.set_header("Content-Type", "application/json");
         try {
             auto request = json::parse(req.body);
             auto response = handleRequest(request);
@@ -64,6 +70,14 @@ void McpServer::start() {
 
 void McpServer::stop() {
     server_.stop();
+    std::lock_guard<std::mutex> lock(cameras_mutex_);
+    for (auto& [path, camera] : cameras_) {
+        try {
+            camera->disconnect();
+        } catch (...) {
+        }
+    }
+    cameras_.clear();
 }
 
 json McpServer::handleRequest(const json& request) {
@@ -107,59 +121,84 @@ json McpServer::handleToolsList(const json& id) {
 
 json McpServer::handleToolsCall(const json& params, const json& id) {
     auto name = params.value("name", "");
+    auto args = params.value("arguments", json::object());
 
-    if (name == "list_cameras") {
-        auto cameras = listCameras();
-        json arr = json::array();
-        for (const auto& cam : cameras) {
-            arr.push_back({{"path", cam.path}, {"displayName", cam.displayName}});
+    try {
+        json result;
+        if (name == "list_cameras") {
+            result = toolListCameras(args);
+        } else if (name == "camera_connect") {
+            result = toolCameraConnect(args);
+        } else if (name == "camera_disconnect") {
+            result = toolCameraDisconnect(args);
+        } else if (name == "camera_info") {
+            result = toolCameraInfo(args);
+        } else {
+            return makeError(id, -32602, "Unknown tool: " + name);
         }
-        json content = json::array({{{"type", "text"}, {"text", arr.dump(2)}}});
-        return makeResponse(id, {{"content", content}});
+
+        return makeResponse(id, {{"content", json::array({{{"type", "text"}, {"text", result.dump()}}})}});
+    } catch (const std::exception& e) {
+        return makeResponse(
+            id,
+            {{"content", json::array({{{"type", "text"}, {"text", std::string("Error: ") + e.what()}}})},
+             {"isError", true}});
+    }
+}
+
+json McpServer::toolListCameras(const json& /*args*/) {
+    auto cameras = listCameras();
+    json result = json::array();
+    for (const auto& cam : cameras) {
+        result.push_back({{"path", cam.path}, {"displayName", cam.displayName}});
+    }
+    return result;
+}
+
+json McpServer::toolCameraConnect(const json& args) {
+    auto cameraPath = args.at("cameraPath").get<std::string>();
+
+    std::lock_guard<std::mutex> lock(cameras_mutex_);
+    if (cameras_.count(cameraPath)) {
+        throw std::runtime_error("Camera already connected: " + cameraPath);
     }
 
-    if (name == "connect_camera") {
-        auto args = params.value("arguments", json::object());
-        auto path = args.value("path", "");
-        if (path.empty()) {
-            return makeToolError(id, "Missing required parameter: path");
-        }
-
-        std::lock_guard<std::mutex> lock(cameras_mutex_);
-        auto it = cameras_.find(path);
-        if (it != cameras_.end()) {
-            return makeToolError(id, "Camera already connected: " + path);
-        }
-
-        auto camera = std::make_unique<Camera>();
-        if (!camera->connect(path)) {
-            return makeToolError(id, "Failed to connect to " + path);
-        }
-
-        cameras_.emplace(path, std::move(camera));
-        json content = json::array({{{"type", "text"}, {"text", "Connected to " + path}}});
-        return makeResponse(id, {{"content", content}});
+    auto camera = std::make_unique<Camera>();
+    if (!camera->connect(cameraPath)) {
+        throw std::runtime_error("Failed to connect to " + cameraPath);
     }
 
-    if (name == "disconnect_camera") {
-        auto args = params.value("arguments", json::object());
-        auto path = args.value("path", "");
-        if (path.empty()) {
-            return makeToolError(id, "Missing required parameter: path");
-        }
+    cameras_[cameraPath] = std::move(camera);
+    return {{"success", true}};
+}
 
-        std::lock_guard<std::mutex> lock(cameras_mutex_);
-        auto it = cameras_.find(path);
-        if (it == cameras_.end()) {
-            return makeToolError(id, "Camera not connected: " + path);
-        }
+json McpServer::toolCameraDisconnect(const json& args) {
+    auto cameraPath = args.at("cameraPath").get<std::string>();
 
-        cameras_.erase(it);
-        json content = json::array({{{"type", "text"}, {"text", "Disconnected from " + path}}});
-        return makeResponse(id, {{"content", content}});
+    std::lock_guard<std::mutex> lock(cameras_mutex_);
+    auto it = cameras_.find(cameraPath);
+    if (it == cameras_.end()) {
+        throw std::runtime_error("Camera not connected: " + cameraPath);
     }
+    it->second->disconnect();
+    cameras_.erase(it);
+    return {{"success", true}};
+}
 
-    return makeError(id, -32602, "Unknown tool: " + name);
+json McpServer::toolCameraInfo(const json& args) {
+    auto cameraPath = args.at("cameraPath").get<std::string>();
+
+    std::lock_guard<std::mutex> lock(cameras_mutex_);
+    auto& cam = getCamera(cameraPath);
+    return cam.systemInfo();
+}
+
+Camera& McpServer::getCamera(const std::string& cameraPath) {
+    auto it = cameras_.find(cameraPath);
+    if (it == cameras_.end()) {
+        throw std::runtime_error("Camera not connected: " + cameraPath);
+    }
+    return *it->second;
 }
 
 json McpServer::makeResponse(const json& id, const json& result) {
@@ -168,11 +207,6 @@ json McpServer::makeResponse(const json& id, const json& result) {
 
 json McpServer::makeError(const json& id, int code, const std::string& message) {
     return {{"jsonrpc", "2.0"}, {"id", id}, {"error", {{"code", code}, {"message", message}}}};
-}
-
-json McpServer::makeToolError(const json& id, const std::string& message) {
-    json content = json::array({{{"type", "text"}, {"text", message}}});
-    return makeResponse(id, {{"content", content}, {"isError", true}});
 }
 
 }  // namespace mcp

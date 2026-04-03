@@ -3,9 +3,12 @@
 #include <memory>
 #include <string>
 
+#include "nlohmann/json.hpp"
+
 namespace mcp {
 
 class SerialPort;
+class Protocol;
 
 class Camera {
  public:
@@ -17,9 +20,15 @@ class Camera {
 
     bool connect(const std::string& path);
     void disconnect();
+    [[nodiscard]] bool isConnected() const;
+
+    [[nodiscard]] nlohmann::json systemInfo() const;
 
  private:
-    std::unique_ptr<SerialPort> port_;
+    std::shared_ptr<SerialPort> port_;
+    std::unique_ptr<Protocol> protocol_;
+
+    static int detectProtocol(SerialPort& port);
 };
 
 }  // namespace mcp

@@ -90,7 +90,7 @@ TEST_F(McpServerTest, ToolsList) {
     ASSERT_TRUE(resp.contains("result"));
     auto& tools = resp["result"]["tools"];
     ASSERT_TRUE(tools.is_array());
-    EXPECT_GE(tools.size(), 1u);
+    EXPECT_EQ(tools.size(), 4u);
     bool found = false;
     for (const auto& t : tools) {
         if (t["name"] == "list_cameras") {
@@ -148,37 +148,40 @@ TEST_F(McpServerTest, InvalidJsonRpcVersion) {
     EXPECT_EQ(resp["error"]["code"], -32600);
 }
 
-TEST_F(McpServerTest, ConnectCameraInvalidPath) {
-    auto resp = call_tool(60, "connect_camera", {{"path", "/dev/cu.nonexistent"}});
+TEST_F(McpServerTest, CameraConnectInvalidPath) {
+    auto resp = call_tool(60, "camera_connect", {{"cameraPath", "/dev/cu.nonexistent"}});
     ASSERT_TRUE(resp.contains("result"));
     EXPECT_TRUE(resp["result"].value("isError", false));
 }
 
-TEST_F(McpServerTest, DisconnectCameraNotConnected) {
-    auto resp = call_tool(61, "disconnect_camera", {{"path", "/dev/cu.nonexistent"}});
+TEST_F(McpServerTest, CameraDisconnectNotConnected) {
+    auto resp = call_tool(61, "camera_disconnect", {{"cameraPath", "/dev/cu.nonexistent"}});
     ASSERT_TRUE(resp.contains("result"));
     EXPECT_TRUE(resp["result"].value("isError", false));
 }
 
-TEST_F(McpServerTest, ConnectCameraMissingPath) {
-    auto resp = call_tool(62, "connect_camera");
+TEST_F(McpServerTest, CameraInfoNotConnected) {
+    auto resp = call_tool(62, "camera_info", {{"cameraPath", "/dev/cu.nonexistent"}});
     ASSERT_TRUE(resp.contains("result"));
     EXPECT_TRUE(resp["result"].value("isError", false));
 }
 
-TEST_F(McpServerTest, ToolsListIncludesNewTools) {
+TEST_F(McpServerTest, ToolsListIncludesAllTools) {
     json req = {{"jsonrpc", "2.0"}, {"id", 63}, {"method", "tools/list"}};
     auto resp = post_mcp(req);
     ASSERT_TRUE(resp.contains("result"));
     auto& tools = resp["result"]["tools"];
     ASSERT_TRUE(tools.is_array());
-    EXPECT_GE(tools.size(), 3u);
+    EXPECT_EQ(tools.size(), 4u);
     bool found_connect = false;
     bool found_disconnect = false;
+    bool found_info = false;
     for (const auto& t : tools) {
-        if (t["name"] == "connect_camera") found_connect = true;
-        if (t["name"] == "disconnect_camera") found_disconnect = true;
+        if (t["name"] == "camera_connect") found_connect = true;
+        if (t["name"] == "camera_disconnect") found_disconnect = true;
+        if (t["name"] == "camera_info") found_info = true;
     }
     EXPECT_TRUE(found_connect);
     EXPECT_TRUE(found_disconnect);
+    EXPECT_TRUE(found_info);
 }

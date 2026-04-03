@@ -102,46 +102,52 @@ void SerialPort::close() {
         ::close(fd_);
         fd_ = -1;
     }
+    write_buf_.clear();
+    recv_buf_.clear();
 }
 
-std::vector<uint8_t> SerialPort::read(int timeoutMs) const {
-    if (fd_ < 0) {
-        return {};
-    }
-
-    fd_set rfds;
-    FD_ZERO(&rfds);
-    FD_SET(fd_, &rfds);
-    struct timeval tv{};
-    tv.tv_sec = timeoutMs / 1000;
-    tv.tv_usec = (timeoutMs % 1000) * 1000;
-    if (select(fd_ + 1, &rfds, nullptr, nullptr, &tv) <= 0) {
-        return {};
-    }
-
-    uint8_t buf[4096];
-    ssize_t n = ::read(fd_, buf, sizeof(buf));
-    if (n > 0) {
-        return {buf, buf + n};
-    }
-    return {};
+bool SerialPort::isOpen() const {
+    return fd_ >= 0;
 }
 
-bool SerialPort::write(const std::vector<uint8_t>& data) {
+bool SerialPort::send() {
     if (fd_ < 0) {
+        write_buf_.clear();
         return false;
     }
-    size_t len = data.size();
+    size_t len = write_buf_.size();
     size_t written = 0;
     while (written < len) {
-        ssize_t n = ::write(fd_, data.data() + written, len - written);
+        ssize_t n = ::write(fd_, write_buf_.data() + written, len - written);
         if (n < 0) {
+            write_buf_.clear();
             return false;
         }
         written += static_cast<size_t>(n);
     }
     tcdrain(fd_);
+    write_buf_.clear();
     return true;
+}
+
+bool SerialPort::recv() {
+    if (fd_ < 0) return false;
+
+    fd_set rfds;
+    FD_ZERO(&rfds);
+    FD_SET(fd_, &rfds);
+    struct timeval tv{};
+    tv.tv_sec = 1;
+    tv.tv_usec = 0;
+    if (select(fd_ + 1, &rfds, nullptr, nullptr, &tv) <= 0) return false;
+
+    uint8_t buf[4096];
+    ssize_t n = ::read(fd_, buf, sizeof(buf));
+    if (n > 0) {
+        recv_buf_.push_back(buf, static_cast<size_t>(n));
+        return true;
+    }
+    return false;
 }
 
 }  // namespace mcp

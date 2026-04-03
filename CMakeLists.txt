@@ -10,6 +10,9 @@ set(CORE_SOURCES
     src/mcp_server.cpp
     src/board.cpp
     src/camera.cpp
+    src/protocol/protocol_v1.cpp
+    src/protocol/protocol_v2.cpp
+    src/serial_port/serial_port.cpp
 )
 
 if(APPLE)
@@ -27,7 +30,7 @@ elseif(WIN32)
 endif()
 
 # Common include dirs
-set(COMMON_INCLUDES src src/camera_list 3rdparty 3rdparty/nlohmann-json/single_include)
+set(COMMON_INCLUDES src src/camera_list src/utils 3rdparty 3rdparty/nlohmann-json/single_include)
 
 find_package(Threads REQUIRED)
 set(COMMON_LIBS Threads::Threads)
@@ -57,7 +60,11 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 include(GoogleTest)
 
-add_executable(openmv_mcp_server_test ${CORE_SOURCES} tests/mcp_server_test.cpp)
+add_executable(openmv_mcp_server_test ${CORE_SOURCES}
+    tests/mcp_server_test.cpp
+    tests/crc_test.cpp
+    tests/ring_buffer_test.cpp
+)
 target_include_directories(openmv_mcp_server_test PRIVATE ${COMMON_INCLUDES})
 target_link_libraries(openmv_mcp_server_test PRIVATE ${COMMON_LIBS} GTest::gtest_main)
 gtest_discover_tests(openmv_mcp_server_test)

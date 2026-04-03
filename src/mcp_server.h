@@ -1,4 +1,5 @@
 #pragma once
+
 #include <httplib/httplib.h>
 
 #include <map>
@@ -28,9 +29,15 @@ class McpServer {
     nlohmann::json handleToolsList(const nlohmann::json& id);
     nlohmann::json handleToolsCall(const nlohmann::json& params, const nlohmann::json& id);
 
+    // Tool implementations
+    nlohmann::json toolListCameras(const nlohmann::json& args);
+    nlohmann::json toolCameraConnect(const nlohmann::json& args);
+    nlohmann::json toolCameraDisconnect(const nlohmann::json& args);
+    nlohmann::json toolCameraInfo(const nlohmann::json& args);
+
+    Camera& getCamera(const std::string& cameraPath);
     static nlohmann::json makeResponse(const nlohmann::json& id, const nlohmann::json& result);
     static nlohmann::json makeError(const nlohmann::json& id, int code, const std::string& message);
-    static nlohmann::json makeToolError(const nlohmann::json& id, const std::string& message);
 
     int port_;
     httplib::Server server_;
