@@ -2,18 +2,34 @@
 
 #include <iostream>
 
+#include "camera.h"
 #include "camera_list/camera_list.h"
 
 using json = nlohmann::json;
 
 namespace mcp {
 
-static json toolDefinitions() {
-    return json::array({
+static const json& toolDefinitions() {
+    static const json defs = json::array({
         {{"name", "list_cameras"},
          {"description", "Discover connected OpenMV cameras via USB serial port enumeration"},
          {"inputSchema", {{"type", "object"}, {"properties", json::object()}, {"required", json::array()}}}},
+        {{"name", "connect_camera"},
+         {"description", "Connect to an OpenMV camera by opening its serial port"},
+         {"inputSchema",
+          {{"type", "object"},
+           {"properties",
+            {{"path", {{"type", "string"}, {"description", "Serial port path (e.g. /dev/cu.usbmodem1234)"}}}}},
+           {"required", json::array({"path"})}}}},
+        {{"name", "disconnect_camera"},
+         {"description", "Disconnect from a connected OpenMV camera"},
+         {"inputSchema",
+          {{"type", "object"},
+           {"properties",
+            {{"path", {{"type", "string"}, {"description", "Serial port path of the connected camera"}}}}},
+           {"required", json::array({"path"})}}}},
     });
+    return defs;
 }
 
 McpServer::McpServer(int port) : port_(port) {}
@@ -38,7 +54,6 @@ void McpServer::start() {
         }
     });
 
-    // Health check
     server_.Get("/health", [](const httplib::Request&, httplib::Response& res) {
         res.set_content(R"({"status":"ok"})", "application/json");
     });
@@ -103,6 +118,47 @@ json McpServer::handleToolsCall(const json& params, const json& id) {
         return makeResponse(id, {{"content", content}});
     }
 
+    if (name == "connect_camera") {
+        auto args = params.value("arguments", json::object());
+        auto path = args.value("path", "");
+        if (path.empty()) {
+            return makeToolError(id, "Missing required parameter: path");
+        }
+
+        std::lock_guard<std::mutex> lock(cameras_mutex_);
+        auto it = cameras_.find(path);
+        if (it != cameras_.end()) {
+            return makeToolError(id, "Camera already connected: " + path);
+        }
+
+        auto camera = std::make_unique<Camera>();
+        if (!camera->connect(path)) {
+            return makeToolError(id, "Failed to connect to " + path);
+        }
+
+        cameras_.emplace(path, std::move(camera));
+        json content = json::array({{{"type", "text"}, {"text", "Connected to " + path}}});
+        return makeResponse(id, {{"content", content}});
+    }
+
+    if (name == "disconnect_camera") {
+        auto args = params.value("arguments", json::object());
+        auto path = args.value("path", "");
+        if (path.empty()) {
+            return makeToolError(id, "Missing required parameter: path");
+        }
+
+        std::lock_guard<std::mutex> lock(cameras_mutex_);
+        auto it = cameras_.find(path);
+        if (it == cameras_.end()) {
+            return makeToolError(id, "Camera not connected: " + path);
+        }
+
+        cameras_.erase(it);
+        json content = json::array({{{"type", "text"}, {"text", "Disconnected from " + path}}});
+        return makeResponse(id, {{"content", content}});
+    }
+
     return makeError(id, -32602, "Unknown tool: " + name);
 }
 
@@ -112,6 +168,11 @@ json McpServer::makeResponse(const json& id, const json& result) {
 
 json McpServer::makeError(const json& id, int code, const std::string& message) {
     return {{"jsonrpc", "2.0"}, {"id", id}, {"error", {{"code", code}, {"message", message}}}};
+}
+
+json McpServer::makeToolError(const json& id, const std::string& message) {
+    json content = json::array({{{"type", "text"}, {"text", message}}});
+    return makeResponse(id, {{"content", content}, {"isError", true}});
 }
 
 }  // namespace mcp

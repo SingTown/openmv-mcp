@@ -9,14 +9,21 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CORE_SOURCES
     src/mcp_server.cpp
     src/board.cpp
+    src/camera.cpp
 )
 
 if(APPLE)
-    list(APPEND CORE_SOURCES src/camera_list/camera_list_darwin.cpp)
+    list(APPEND CORE_SOURCES
+        src/camera_list/camera_list_darwin.cpp
+        src/serial_port/serial_port_unix.cpp)
 elseif(UNIX)
-    list(APPEND CORE_SOURCES src/camera_list/camera_list_linux.cpp)
+    list(APPEND CORE_SOURCES
+        src/camera_list/camera_list_linux.cpp
+        src/serial_port/serial_port_unix.cpp)
 elseif(WIN32)
-    list(APPEND CORE_SOURCES src/camera_list/camera_list_win.cpp)
+    list(APPEND CORE_SOURCES
+        src/camera_list/camera_list_win.cpp
+        src/serial_port/serial_port_win.cpp)
 endif()
 
 # Common include dirs

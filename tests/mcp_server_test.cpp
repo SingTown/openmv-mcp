@@ -147,3 +147,38 @@ TEST_F(McpServerTest, InvalidJsonRpcVersion) {
     ASSERT_TRUE(resp.contains("error"));
     EXPECT_EQ(resp["error"]["code"], -32600);
 }
+
+TEST_F(McpServerTest, ConnectCameraInvalidPath) {
+    auto resp = call_tool(60, "connect_camera", {{"path", "/dev/cu.nonexistent"}});
+    ASSERT_TRUE(resp.contains("result"));
+    EXPECT_TRUE(resp["result"].value("isError", false));
+}
+
+TEST_F(McpServerTest, DisconnectCameraNotConnected) {
+    auto resp = call_tool(61, "disconnect_camera", {{"path", "/dev/cu.nonexistent"}});
+    ASSERT_TRUE(resp.contains("result"));
+    EXPECT_TRUE(resp["result"].value("isError", false));
+}
+
+TEST_F(McpServerTest, ConnectCameraMissingPath) {
+    auto resp = call_tool(62, "connect_camera");
+    ASSERT_TRUE(resp.contains("result"));
+    EXPECT_TRUE(resp["result"].value("isError", false));
+}
+
+TEST_F(McpServerTest, ToolsListIncludesNewTools) {
+    json req = {{"jsonrpc", "2.0"}, {"id", 63}, {"method", "tools/list"}};
+    auto resp = post_mcp(req);
+    ASSERT_TRUE(resp.contains("result"));
+    auto& tools = resp["result"]["tools"];
+    ASSERT_TRUE(tools.is_array());
+    EXPECT_GE(tools.size(), 3u);
+    bool found_connect = false;
+    bool found_disconnect = false;
+    for (const auto& t : tools) {
+        if (t["name"] == "connect_camera") found_connect = true;
+        if (t["name"] == "disconnect_camera") found_disconnect = true;
+    }
+    EXPECT_TRUE(found_connect);
+    EXPECT_TRUE(found_disconnect);
+}

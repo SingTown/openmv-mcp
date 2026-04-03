@@ -1,10 +1,15 @@
 #pragma once
 #include <httplib/httplib.h>
 
+#include <map>
+#include <memory>
+#include <mutex>
 #include <nlohmann/json.hpp>
 #include <string>
 
 namespace mcp {
+
+class Camera;
 
 class McpServer {
  public:
@@ -25,9 +30,12 @@ class McpServer {
 
     static nlohmann::json makeResponse(const nlohmann::json& id, const nlohmann::json& result);
     static nlohmann::json makeError(const nlohmann::json& id, int code, const std::string& message);
+    static nlohmann::json makeToolError(const nlohmann::json& id, const std::string& message);
 
     int port_;
     httplib::Server server_;
+    std::map<std::string, std::unique_ptr<Camera>> cameras_;
+    std::mutex cameras_mutex_;
 };
 
 }  // namespace mcp
