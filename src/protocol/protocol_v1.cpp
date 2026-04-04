@@ -150,7 +150,7 @@ void ProtocolV1::poll() {
     }
     sendCommand(V1Opcode::TX_BUF_READ, readLen);
     auto bytes = port_->read_bytes(readLen);
-    appendTerminal({bytes.begin(), bytes.end()});
+    terminal_buf_.append(bytes);
 }
 
 }  // namespace mcp

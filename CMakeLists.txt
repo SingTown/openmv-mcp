@@ -65,6 +65,7 @@ add_executable(openmv_mcp_server_test ${CORE_SOURCES}
     tests/mcp_server_test.cpp
     tests/crc_test.cpp
     tests/ring_buffer_test.cpp
+    tests/utf8_buffer_test.cpp
 )
 target_include_directories(openmv_mcp_server_test PRIVATE ${COMMON_INCLUDES})
 target_link_libraries(openmv_mcp_server_test PRIVATE ${COMMON_LIBS} GTest::gtest_main)

@@ -9,6 +9,7 @@
 #include <thread>
 
 #include "serial_port/serial_port.h"
+#include "utils/utf8_buffer.h"
 
 namespace mcp {
 
@@ -51,13 +52,10 @@ class Protocol {
         if (!port_ || !port_->isOpen()) throw std::runtime_error("Serial connection not open");
     }
 
-    void appendTerminal(const std::string& data);
-
-    static constexpr size_t kMaxTerminalBuf = size_t{1024} * 1024;
     std::shared_ptr<SerialPort> port_;
     std::thread loop_thread_;
     std::mutex io_mutex_;
-    std::string terminal_buf_;
+    Utf8Buffer terminal_buf_;
     std::atomic<bool> loop_running_{false};
     std::atomic<bool> script_running_{false};
 };

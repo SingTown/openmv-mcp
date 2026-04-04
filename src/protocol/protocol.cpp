@@ -12,8 +12,7 @@ void Protocol::disconnect() {
 }
 
 std::string Protocol::readTerminal() {
-    std::lock_guard<std::mutex> lock(io_mutex_);
-    return std::move(terminal_buf_);
+    return terminal_buf_.take();
 }
 
 void Protocol::startLoopThread() {
@@ -48,13 +47,6 @@ void Protocol::stopLoopThread() {
     if (loop_thread_.joinable()) {
         loop_thread_.join();
     }
-}
-
-void Protocol::appendTerminal(const std::string& data) {
-    if (terminal_buf_.size() + data.size() > kMaxTerminalBuf) {
-        terminal_buf_.erase(0, terminal_buf_.size() + data.size() - kMaxTerminalBuf);
-    }
-    terminal_buf_ += data;
 }
 
 }  // namespace mcp

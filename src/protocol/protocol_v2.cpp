@@ -389,7 +389,7 @@ void ProtocolV2::poll() {
     uint32_t available = channelSize(stdout_channel_);
     if (available == 0) return;
     auto data = channelRead(stdout_channel_, 0, available);
-    appendTerminal({data.begin(), data.end()});
+    terminal_buf_.append(data);
 }
 
 }  // namespace mcp
