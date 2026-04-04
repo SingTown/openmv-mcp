@@ -33,6 +33,38 @@ static const json& toolDefinitions() {
          {"description", "Get detailed information about a connected camera"},
          {"inputSchema",
           {{"type", "object"}, {"properties", cameraPathParam()}, {"required", json::array({"cameraPath"})}}}},
+
+        {{"name", "run_script"},
+         {"description", "Execute a MicroPython script on the camera"},
+         {"inputSchema",
+          {{"type", "object"},
+           {"properties",
+            {{"cameraPath", {{"type", "string"}, {"description", "Serial port path of the camera"}}},
+             {"script",
+              {{"type", "string"},
+               {"description", "MicroPython source code to execute"},
+               {"default",
+                "import csi\nimport time\n\ncsi0 = csi.CSI()\ncsi0.reset()\n"
+                "csi0.pixformat(csi.RGB565)\ncsi0.framesize(csi.VGA)\n"
+                "csi0.snapshot(time=2000)\n\nclock = time.clock()\n\n"
+                "while True:\n    clock.tick()\n    img = csi0.snapshot()\n"
+                "    print(clock.fps())"}}}}},
+           {"required", json::array({"cameraPath", "script"})}}}},
+
+        {{"name", "stop_script"},
+         {"description", "Stop the currently running script on the camera"},
+         {"inputSchema",
+          {{"type", "object"}, {"properties", cameraPathParam()}, {"required", json::array({"cameraPath"})}}}},
+
+        {{"name", "read_terminal"},
+         {"description", "Read available terminal output (stdout/stderr) from the camera"},
+         {"inputSchema",
+          {{"type", "object"}, {"properties", cameraPathParam()}, {"required", json::array({"cameraPath"})}}}},
+
+        {{"name", "script_running"},
+         {"description", "Check if a script is currently running on the camera (updated by device events)"},
+         {"inputSchema",
+          {{"type", "object"}, {"properties", cameraPathParam()}, {"required", json::array({"cameraPath"})}}}},
     });
     return defs;
 }
@@ -40,10 +72,12 @@ static const json& toolDefinitions() {
 McpServer::McpServer(int port) : port_(port) {}
 
 McpServer::~McpServer() {
-    stop();
+    shutdown();
 }
 
 void McpServer::start() {
+    server_.new_task_queue = [] { return new httplib::ThreadPool(1); };
+
     server_.Post("/mcp", [this](const httplib::Request& req, httplib::Response& res) {
         res.set_header("Content-Type", "application/json");
         try {
@@ -68,9 +102,20 @@ void McpServer::start() {
     server_.listen("127.0.0.1", port_);
 }
 
-void McpServer::stop() {
+void McpServer::stopListening() {
     server_.stop();
-    std::lock_guard<std::mutex> lock(cameras_mutex_);
+}
+
+void McpServer::shutdown() {
+    if (stopped_.exchange(true)) return;
+
+    std::cerr << "Shutting down...\n";
+
+    // Stop accepting new connections and wait for the ThreadPool(1) worker to
+    // finish any in-flight request.  After this call returns the worker thread
+    // has been joined, so no handler can be accessing cameras_ concurrently.
+    server_.stop();
+
     for (auto& [path, camera] : cameras_) {
         try {
             camera->disconnect();
@@ -133,6 +178,14 @@ json McpServer::handleToolsCall(const json& params, const json& id) {
             result = toolCameraDisconnect(args);
         } else if (name == "camera_info") {
             result = toolCameraInfo(args);
+        } else if (name == "run_script") {
+            result = toolRunScript(args);
+        } else if (name == "stop_script") {
+            result = toolStopScript(args);
+        } else if (name == "read_terminal") {
+            result = toolReadTerminal(args);
+        } else if (name == "script_running") {
+            result = toolScriptRunning(args);
         } else {
             return makeError(id, -32602, "Unknown tool: " + name);
         }
@@ -158,15 +211,12 @@ json McpServer::toolListCameras(const json& /*args*/) {
 json McpServer::toolCameraConnect(const json& args) {
     auto cameraPath = args.at("cameraPath").get<std::string>();
 
-    std::lock_guard<std::mutex> lock(cameras_mutex_);
     if (cameras_.count(cameraPath)) {
         throw std::runtime_error("Camera already connected: " + cameraPath);
     }
 
     auto camera = std::make_unique<Camera>();
-    if (!camera->connect(cameraPath)) {
-        throw std::runtime_error("Failed to connect to " + cameraPath);
-    }
+    camera->connect(cameraPath);
 
     cameras_[cameraPath] = std::move(camera);
     return {{"success", true}};
@@ -175,7 +225,6 @@ json McpServer::toolCameraConnect(const json& args) {
 json McpServer::toolCameraDisconnect(const json& args) {
     auto cameraPath = args.at("cameraPath").get<std::string>();
 
-    std::lock_guard<std::mutex> lock(cameras_mutex_);
     auto it = cameras_.find(cameraPath);
     if (it == cameras_.end()) {
         throw std::runtime_error("Camera not connected: " + cameraPath);
@@ -187,10 +236,36 @@ json McpServer::toolCameraDisconnect(const json& args) {
 
 json McpServer::toolCameraInfo(const json& args) {
     auto cameraPath = args.at("cameraPath").get<std::string>();
-
-    std::lock_guard<std::mutex> lock(cameras_mutex_);
     auto& cam = getCamera(cameraPath);
     return cam.systemInfo();
+}
+
+json McpServer::toolRunScript(const json& args) {
+    auto cameraPath = args.at("cameraPath").get<std::string>();
+    auto script = args.at("script").get<std::string>();
+    auto& cam = getCamera(cameraPath);
+    cam.execScript(script);
+    return {{"success", true}};
+}
+
+json McpServer::toolStopScript(const json& args) {
+    auto cameraPath = args.at("cameraPath").get<std::string>();
+    auto& cam = getCamera(cameraPath);
+    cam.stopScript();
+    return {{"success", true}};
+}
+
+json McpServer::toolReadTerminal(const json& args) {
+    auto cameraPath = args.at("cameraPath").get<std::string>();
+    auto& cam = getCamera(cameraPath);
+    std::string output = cam.readTerminal();
+    return {{"output", output}};
+}
+
+json McpServer::toolScriptRunning(const json& args) {
+    auto cameraPath = args.at("cameraPath").get<std::string>();
+    auto& cam = getCamera(cameraPath);
+    return {{"running", cam.scriptRunning()}};
 }
 
 Camera& McpServer::getCamera(const std::string& cameraPath) {

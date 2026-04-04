@@ -137,8 +137,8 @@ bool SerialPort::recv() {
     FD_ZERO(&rfds);
     FD_SET(fd_, &rfds);
     struct timeval tv{};
-    tv.tv_sec = 1;
-    tv.tv_usec = 0;
+    tv.tv_sec = 0;
+    tv.tv_usec = 1000;  // 1ms
     if (select(fd_ + 1, &rfds, nullptr, nullptr, &tv) <= 0) return false;
 
     uint8_t buf[4096];

@@ -20,25 +20,26 @@ Camera::~Camera() {
     disconnect();
 }
 
-bool Camera::connect(const std::string& path) {
+void Camera::connect(const std::string& path) {
     disconnect();
 
-    if (!port_->open(path)) return false;
+    if (!port_->open(path)) {
+        throw std::runtime_error("Failed to open serial port: " + path);
+    }
 
     int protoVersion = detectProtocol(*port_);
+    if (protoVersion == 1) {
+        protocol_ = std::make_unique<ProtocolV1>();
+    } else {
+        protocol_ = std::make_unique<ProtocolV2>();
+    }
     try {
-        if (protoVersion == 1) {
-            protocol_ = std::make_unique<ProtocolV1>();
-        } else {
-            protocol_ = std::make_unique<ProtocolV2>();
-        }
         protocol_->connect(port_);
-    } catch (const std::exception&) {
+    } catch (...) {
         protocol_.reset();
         port_->close();
-        return false;
+        throw;
     }
-    return true;
 }
 
 void Camera::disconnect() {
@@ -87,7 +88,25 @@ nlohmann::json Camera::systemInfo() const {
             {"boardType", board_type},
             {"displayName", display_name},
             {"sensor", sensor},
-            {"fwVersion", fw_buf}};
+            {"fwVersion", fw_buf},
+            {"protocolVersion", si.protocol_version}};
+}
+
+void Camera::execScript(const std::string& script) {
+    protocol_->execScript(script);
+}
+
+void Camera::stopScript() {
+    protocol_->stopScript();
+}
+
+std::string Camera::readTerminal() {
+    return protocol_->readTerminal();
+}
+
+bool Camera::scriptRunning() const {
+    if (!protocol_) return false;
+    return protocol_->scriptRunning();
 }
 
 int Camera::detectProtocol(SerialPort& port) {

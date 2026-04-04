@@ -1,5 +1,6 @@
 #include "serial_port.h"
 
+#include <chrono>
 #include <stdexcept>
 
 namespace mcp {
@@ -25,8 +26,12 @@ void SerialPort::write_bytes(const std::vector<uint8_t>& data) {
 }
 
 void SerialPort::waitForData(size_t n) {
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(kTimeoutMs);
     while (recv_buf_.size() < n) {
-        if (!recv()) throw std::runtime_error("Read timeout");
+        if (std::chrono::steady_clock::now() >= deadline) {
+            throw std::runtime_error("Read timeout");
+        }
+        recv();
     }
 }
 

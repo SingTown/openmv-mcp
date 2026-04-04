@@ -1,9 +1,11 @@
 #include "protocol_v2.h"
 
 #include <algorithm>
+#include <chrono>
 #include <cstring>
 #include <stdexcept>
 #include <string>
+#include <thread>
 
 #include "serial_port/serial_port.h"
 #include "utils/crc.h"
@@ -44,10 +46,22 @@ constexpr uint8_t SYS_INFO = 0x12;
 constexpr uint8_t CHANNEL_LIST = 0x20;
 constexpr uint8_t CHANNEL_LOCK = 0x22;
 constexpr uint8_t CHANNEL_UNLOCK = 0x23;
+constexpr uint8_t CHANNEL_SIZE = 0x25;
+constexpr uint8_t CHANNEL_READ = 0x26;
+constexpr uint8_t CHANNEL_WRITE = 0x27;
+constexpr uint8_t CHANNEL_IOCTL = 0x28;
 }  // namespace Opcode
+
+namespace StdinIoctl {
+constexpr uint32_t STOP = 0x01;
+constexpr uint32_t EXEC = 0x02;
+constexpr uint32_t RESET = 0x03;
+}  // namespace StdinIoctl
 
 namespace EventType {
 constexpr uint8_t CHANNEL_REGISTERED = 0x00;
+constexpr uint8_t CHANNEL_UNREGISTERED = 0x01;
+constexpr uint8_t SOFT_REBOOT = 0x02;
 }  // namespace EventType
 
 void ProtocolV2::sendPacket(const Packet& pkt) {
@@ -172,36 +186,14 @@ void ProtocolV2::connect(std::shared_ptr<SerialPort> port) {
     try {
         constexpr int kMaxRetries = 3;
         for (int attempt = 0; attempt < kMaxRetries; attempt++) {
-            sequence_ = 0;
-            max_payload_ = Proto::MIN_PAYLOAD_SIZE;
-
             try {
-                sendPacket({sequence_, 0, 0, Opcode::PROTO_SYNC, 0, {}});
-                readResponse();
-                sequence_ = 0;
+                resync();
                 break;
             } catch (const std::runtime_error&) {
                 if (attempt < kMaxRetries - 1) continue;
                 throw std::runtime_error("Resync failed - unable to synchronize with device");
             }
         }
-
-        sendPacket({sequence_, 0, 0, Opcode::PROTO_GET_CAPS, 0, {}});
-        auto caps_payload = readResponse();
-        if (caps_payload.size() < 6) throw std::runtime_error("Invalid PROTO_GET_CAPS payload");
-
-        uint16_t remote_max;
-        std::memcpy(&remote_max, caps_payload.data() + 4, 2);
-        caps_max_payload_ = std::min(remote_max, caps_max_payload_);
-
-        uint32_t caps_flags = 0x0F;
-        std::vector<uint8_t> caps_out(16, 0);
-        std::memcpy(caps_out.data(), &caps_flags, 4);
-        std::memcpy(caps_out.data() + 4, &caps_max_payload_, 2);
-        sendPacket({sequence_, 0, 0, Opcode::PROTO_SET_CAPS, static_cast<uint16_t>(caps_out.size()), caps_out});
-        readResponse();
-
-        max_payload_ = caps_max_payload_;
 
         sendPacket({sequence_, 0, 0, Opcode::PROTO_VERSION, 0, {}});
         auto ver_data = readResponse();
@@ -225,6 +217,12 @@ void ProtocolV2::connect(std::shared_ptr<SerialPort> port) {
                 std::memcpy(&systemInfo.sensor_chip_id[i], p + 20 + (static_cast<ptrdiff_t>(i) * 4), 4);
             std::memcpy(&systemInfo.capabilities, p + 40, 4);
         }
+
+        // Stop any running script
+        channelIoctl(stdin_channel_, StdinIoctl::STOP);
+
+        systemInfo.protocol_version = 2;
+        startLoopThread();
     } catch (...) {
         disconnect();
         throw;
@@ -236,8 +234,162 @@ void ProtocolV2::disconnect() {
     sequence_ = 0;
     max_payload_ = 0;
     caps_max_payload_ = 4096;
+    stdin_channel_ = 0;
+    stdout_channel_ = 0;
+    channels_stale_ = false;
+    resync_pending_ = false;
 }
 
-void ProtocolV2::handleEvent(uint8_t /*channel_id*/, uint16_t /*event*/) {}
+void ProtocolV2::handleEvent(uint8_t channel_id, uint16_t event) {
+    if (channel_id == 0) {
+        // System events
+        switch (event) {
+            case EventType::SOFT_REBOOT:
+                resync_pending_ = true;
+                sequence_ = 0;
+                break;
+            case EventType::CHANNEL_REGISTERED:
+            case EventType::CHANNEL_UNREGISTERED:
+                channels_stale_ = true;
+                break;
+            default:
+                break;
+        }
+    } else if (channel_id == stdin_channel_) {
+        script_running_ = (event == 1);
+    }
+}
+
+void ProtocolV2::discoverChannels() {
+    sendPacket({sequence_, 0, 0, Opcode::CHANNEL_LIST, 0, {}});
+    auto data = readResponse();
+
+    // Each channel entry is 16 bytes: [id(1), flags(1), name(14)]
+    for (size_t i = 0; i + 16 <= data.size(); i += 16) {
+        uint8_t id = data[i];
+        std::string name(reinterpret_cast<const char*>(data.data() + i + 2), 14);
+        auto nul = name.find('\0');
+        if (nul != std::string::npos) name.resize(nul);
+
+        if (name == "stdin") stdin_channel_ = id;
+        if (name == "stdout") stdout_channel_ = id;
+    }
+    if (stdin_channel_ == 0 || stdout_channel_ == 0) {
+        throw std::runtime_error("Required channels (stdin/stdout) not found");
+    }
+}
+
+void ProtocolV2::channelIoctl(uint8_t channel, uint32_t cmd) {
+    std::vector<uint8_t> payload(4);
+    std::memcpy(payload.data(), &cmd, 4);
+    sendPacket({sequence_, channel, 0, Opcode::CHANNEL_IOCTL, static_cast<uint16_t>(payload.size()), payload});
+    readResponse();
+}
+
+void ProtocolV2::channelWrite(uint8_t channel, const std::vector<uint8_t>& data) {
+    size_t offset = 0;
+    while (offset < data.size()) {
+        size_t chunk = std::min(data.size() - offset, static_cast<size_t>(max_payload_) - 8);
+        std::vector<uint8_t> payload(8 + chunk);
+        auto off32 = static_cast<uint32_t>(offset);
+        auto len32 = static_cast<uint32_t>(chunk);
+        std::memcpy(payload.data(), &off32, 4);
+        std::memcpy(payload.data() + 4, &len32, 4);
+        std::memcpy(payload.data() + 8, data.data() + offset, chunk);
+        sendPacket({sequence_, channel, 0, Opcode::CHANNEL_WRITE, static_cast<uint16_t>(payload.size()), payload});
+        readResponse();
+        offset += chunk;
+    }
+}
+
+uint32_t ProtocolV2::channelSize(uint8_t channel) {
+    sendPacket({sequence_, channel, 0, Opcode::CHANNEL_SIZE, 0, {}});
+    auto data = readResponse();
+    if (data.size() < 4) return 0;
+    uint32_t size = 0;
+    std::memcpy(&size, data.data(), 4);
+    return size;
+}
+
+std::vector<uint8_t> ProtocolV2::channelRead(uint8_t channel, uint32_t offset, uint32_t len) {
+    std::vector<uint8_t> payload(8);
+    std::memcpy(payload.data(), &offset, 4);
+    std::memcpy(payload.data() + 4, &len, 4);
+    sendPacket({sequence_, channel, 0, Opcode::CHANNEL_READ, static_cast<uint16_t>(payload.size()), payload});
+    return readResponse();
+}
+
+void ProtocolV2::execScript(const std::string& script) {
+    requireOpen();
+
+    std::vector<uint8_t> script_data(script.begin(), script.end());
+
+    std::lock_guard<std::mutex> lock(io_mutex_);
+    channelIoctl(stdin_channel_, StdinIoctl::RESET);
+    channelWrite(stdin_channel_, script_data);
+    channelIoctl(stdin_channel_, StdinIoctl::EXEC);
+}
+
+void ProtocolV2::stopScript() {
+    requireOpen();
+
+    std::lock_guard<std::mutex> lock(io_mutex_);
+    channelIoctl(stdin_channel_, StdinIoctl::STOP);
+}
+
+void ProtocolV2::resync() {
+    sequence_ = 0;
+    max_payload_ = Proto::MIN_PAYLOAD_SIZE;
+    sendPacket({sequence_, 0, 0, Opcode::PROTO_SYNC, 0, {}});
+    readResponse();
+    sequence_ = 0;
+
+    sendPacket({sequence_, 0, 0, Opcode::PROTO_GET_CAPS, 0, {}});
+    auto caps_payload = readResponse();
+    if (caps_payload.size() >= 6) {
+        uint16_t remote_max;
+        std::memcpy(&remote_max, caps_payload.data() + 4, 2);
+        caps_max_payload_ = std::min(remote_max, caps_max_payload_);
+    }
+
+    uint32_t caps_flags = 0x0F;
+    std::vector<uint8_t> caps_out(16, 0);
+    std::memcpy(caps_out.data(), &caps_flags, 4);
+    std::memcpy(caps_out.data() + 4, &caps_max_payload_, 2);
+    sendPacket({sequence_, 0, 0, Opcode::PROTO_SET_CAPS, static_cast<uint16_t>(caps_out.size()), caps_out});
+    readResponse();
+
+    max_payload_ = caps_max_payload_;
+    discoverChannels();
+    channels_stale_ = false;
+    script_running_ = false;
+}
+
+void ProtocolV2::poll() {
+    std::lock_guard<std::mutex> lock(io_mutex_);
+
+    if (resync_pending_.exchange(false)) {
+        try {
+            resync();
+        } catch (const std::exception&) {
+            resync_pending_ = true;
+            return;
+        }
+    }
+
+    if (channels_stale_) {
+        try {
+            discoverChannels();
+            channels_stale_ = false;
+        } catch (const std::exception&) {
+            // Will retry on next poll
+        }
+    }
+
+    uint32_t available = channelSize(stdout_channel_);
+    if (available == 0) return;
+    auto data = channelRead(stdout_channel_, 0, available);
+    appendTerminal({data.begin(), data.end()});
+}
 
 }  // namespace mcp

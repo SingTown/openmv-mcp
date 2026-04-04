@@ -18,11 +18,16 @@ class Camera {
     Camera(const Camera&) = delete;
     Camera& operator=(const Camera&) = delete;
 
-    bool connect(const std::string& path);
+    void connect(const std::string& path);
     void disconnect();
     [[nodiscard]] bool isConnected() const;
 
     [[nodiscard]] nlohmann::json systemInfo() const;
+
+    void execScript(const std::string& script);
+    void stopScript();
+    [[nodiscard]] std::string readTerminal();
+    [[nodiscard]] bool scriptRunning() const;
 
  private:
     std::shared_ptr<SerialPort> port_;

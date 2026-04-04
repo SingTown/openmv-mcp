@@ -33,6 +33,7 @@ class SerialPort {
     uint32_t read_le32();
 
  private:
+    static constexpr int kTimeoutMs = 1000;
     void waitForData(size_t n);
     bool recv();
 

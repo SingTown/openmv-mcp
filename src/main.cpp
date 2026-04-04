@@ -1,8 +1,18 @@
+#include <atomic>
+#include <csignal>
 #include <exception>
 #include <iostream>
 #include <string>
 
 #include "mcp_server.h"
+
+static std::atomic<mcp::McpServer*> g_server{nullptr};
+
+static void signalHandler(int /*sig*/) {
+    if (auto* s = g_server.load(std::memory_order_acquire)) {
+        s->stopListening();
+    }
+}
 
 int main(int argc, char* argv[]) {
     int port = 15257;
@@ -24,6 +34,12 @@ int main(int argc, char* argv[]) {
     }
 
     mcp::McpServer server(port);
+    g_server.store(&server, std::memory_order_release);
+
+    std::signal(SIGINT, signalHandler);
+    std::signal(SIGTERM, signalHandler);
+
     server.start();
+    server.shutdown();
     return 0;
 }

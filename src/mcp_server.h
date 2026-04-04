@@ -2,9 +2,9 @@
 
 #include <httplib/httplib.h>
 
+#include <atomic>
 #include <map>
 #include <memory>
-#include <mutex>
 #include <nlohmann/json.hpp>
 #include <string>
 
@@ -21,7 +21,8 @@ class McpServer {
     McpServer& operator=(const McpServer&) = delete;
 
     void start();
-    void stop();
+    void stopListening();
+    void shutdown();
 
  private:
     nlohmann::json handleRequest(const nlohmann::json& request);
@@ -34,6 +35,10 @@ class McpServer {
     nlohmann::json toolCameraConnect(const nlohmann::json& args);
     nlohmann::json toolCameraDisconnect(const nlohmann::json& args);
     nlohmann::json toolCameraInfo(const nlohmann::json& args);
+    nlohmann::json toolRunScript(const nlohmann::json& args);
+    nlohmann::json toolStopScript(const nlohmann::json& args);
+    nlohmann::json toolReadTerminal(const nlohmann::json& args);
+    nlohmann::json toolScriptRunning(const nlohmann::json& args);
 
     Camera& getCamera(const std::string& cameraPath);
     static nlohmann::json makeResponse(const nlohmann::json& id, const nlohmann::json& result);
@@ -42,7 +47,7 @@ class McpServer {
     int port_;
     httplib::Server server_;
     std::map<std::string, std::unique_ptr<Camera>> cameras_;
-    std::mutex cameras_mutex_;
+    std::atomic<bool> stopped_{false};
 };
 
 }  // namespace mcp

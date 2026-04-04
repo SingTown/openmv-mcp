@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstring>
+#include <string>
 #include <vector>
 
 #include "protocol.h"
@@ -32,17 +33,37 @@ class Packet {
 
 class ProtocolV2 : public Protocol {
  public:
+    ~ProtocolV2() override { disconnect(); }
     void connect(std::shared_ptr<SerialPort> port) override;
     void disconnect() override;
+    void execScript(const std::string& script) override;
+    void stopScript() override;
 
  private:
     uint8_t sequence_ = 0;
     uint16_t max_payload_ = 0;
     uint16_t caps_max_payload_ = 4096;
+
+    // Channel IDs
+    uint8_t stdin_channel_ = 0;
+    uint8_t stdout_channel_ = 0;
+
+    bool channels_stale_ = false;
+    std::atomic<bool> resync_pending_{false};
+
     void sendPacket(const Packet& pkt);
     Packet readPacket();
     std::vector<uint8_t> readResponse();
     void handleEvent(uint8_t channel_id, uint16_t event);
+    void resync();
+
+    void discoverChannels();
+    void channelIoctl(uint8_t channel, uint32_t cmd);
+    void channelWrite(uint8_t channel, const std::vector<uint8_t>& data);
+    uint32_t channelSize(uint8_t channel);
+    std::vector<uint8_t> channelRead(uint8_t channel, uint32_t offset, uint32_t len);
+
+    void poll() override;
 };
 
 }  // namespace mcp
