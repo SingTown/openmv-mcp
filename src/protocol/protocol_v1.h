@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-#include "protocol.h"
+#include "camera.h"
 
 namespace mcp {
 
@@ -53,7 +53,7 @@ class V1State {
     std::vector<uint8_t> text_;
 };
 
-class ProtocolV1 : public Protocol {
+class ProtocolV1 : public Camera {
  public:
     ~ProtocolV1() override { disconnect(); }
     void connect(std::shared_ptr<SerialPort> port) override;

@@ -12,7 +12,7 @@ set(CORE_SOURCES
     src/board.cpp
     src/camera.cpp
     src/frame.cpp
-    src/protocol/protocol.cpp
+    src/protocol/protocol_detect.cpp
     src/protocol/protocol_v1.cpp
     src/protocol/protocol_v2.cpp
     src/serial_port/serial_port.cpp

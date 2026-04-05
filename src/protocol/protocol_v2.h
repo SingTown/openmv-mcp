@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "protocol.h"
+#include "camera.h"
 #include "utils/crc.h"
 
 namespace mcp {
@@ -31,7 +31,7 @@ class Packet {
     [[nodiscard]] uint32_t payloadCrc() const { return crc32(payload.data(), payload.size()); }
 };
 
-class ProtocolV2 : public Protocol {
+class ProtocolV2 : public Camera {
  public:
     ~ProtocolV2() override { disconnect(); }
     void connect(std::shared_ptr<SerialPort> port) override;

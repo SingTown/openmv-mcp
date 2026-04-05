@@ -1,5 +1,6 @@
 #include "server/mcp_tool.h"
 
+#include "board.h"
 #include "camera.h"
 #include "camera_list/camera_list.h"
 
@@ -33,8 +34,7 @@ static const McpTool TOOL_CAMERA_CONNECT = {
     CAMERA_PATH_SCHEMA,
     [](McpContext& ctx, const json& args) {
         auto cameraPath = args.at("cameraPath").get<std::string>();
-        auto camera = std::make_unique<Camera>();
-        camera->connect(cameraPath);
+        auto camera = Camera::create(cameraPath);
         ctx.addCamera(cameraPath, std::move(camera));
         McpContent resp;
         resp.addText(json({{"success", true}}));
@@ -61,8 +61,49 @@ static const McpTool TOOL_CAMERA_INFO = {
     CAMERA_PATH_SCHEMA,
     [](McpContext& ctx, const json& args) {
         auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
+        const auto& si = cam.systemInfo;
+
+        char id_buf[25];
+        std::snprintf(id_buf, sizeof(id_buf), "%08X%08X%08X", si.device_id[0], si.device_id[1], si.device_id[2]);
+
+        std::string board_type = si.board_type;
+        std::string display_name = si.display_name;
+        if (board_type.empty() || display_name.empty()) {
+            const auto* b = findBoard(si.vid, si.pid);
+            if (b != nullptr) {
+                if (board_type.empty()) {
+                    board_type = b->boardType;
+                }
+                if (display_name.empty()) {
+                    display_name = b->displayName;
+                }
+            }
+        }
+
+        char fw_buf[16];
+        std::snprintf(fw_buf, sizeof(fw_buf), "%d.%d.%d", si.fw_version[0], si.fw_version[1], si.fw_version[2]);
+
+        std::string sensor;
+        for (const auto& chip_id : si.sensor_chip_id) {
+            if (chip_id == 0) {
+                continue;
+            }
+            auto it = ALL_SENSORS_MAP.find(chip_id);
+            if (it != ALL_SENSORS_MAP.end()) {
+                if (!sensor.empty()) {
+                    sensor += ", ";
+                }
+                sensor += it->second;
+            }
+        }
+
         McpContent resp;
-        resp.addText(cam.systemInfo());
+        resp.addText(json({{"boardId", id_buf},
+                           {"boardType", board_type},
+                           {"displayName", display_name},
+                           {"sensor", sensor},
+                           {"fwVersion", fw_buf},
+                           {"protocolVersion", si.protocol_version}}));
         return resp;
     },
 };

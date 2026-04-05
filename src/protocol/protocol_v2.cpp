@@ -237,7 +237,7 @@ void ProtocolV2::connect(std::shared_ptr<SerialPort> port) {
 }
 
 void ProtocolV2::disconnect() {
-    Protocol::disconnect();
+    Camera::disconnect();
     sequence_ = 0;
     max_payload_ = 0;
     caps_max_payload_ = 4096;
