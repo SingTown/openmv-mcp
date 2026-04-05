@@ -4,13 +4,13 @@
 #include <iostream>
 #include <string>
 
-#include "mcp_server.h"
+#include "server/mcp_server.h"
 
 static std::atomic<mcp::McpServer*> g_server{nullptr};
 
 static void signalHandler(int /*sig*/) {
     if (auto* s = g_server.load(std::memory_order_acquire)) {
-        s->stopListening();
+        s->stop();
     }
 }
 
@@ -40,6 +40,5 @@ int main(int argc, char* argv[]) {
     std::signal(SIGTERM, signalHandler);
 
     server.start();
-    server.shutdown();
     return 0;
 }

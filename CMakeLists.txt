@@ -7,7 +7,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # Core sources (shared between server and test)
 set(CORE_SOURCES
-    src/mcp_server.cpp
+    src/server/mcp_server.cpp
+    src/server/mcp_tool.cpp
     src/board.cpp
     src/camera.cpp
     src/protocol/protocol.cpp

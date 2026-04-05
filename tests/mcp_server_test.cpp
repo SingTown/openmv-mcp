@@ -1,4 +1,4 @@
-#include "mcp_server.h"
+#include "server/mcp_server.h"
 
 #include <gtest/gtest.h>
 #include <httplib/httplib.h>
@@ -29,7 +29,7 @@ class McpServerTest : public ::testing::Test {
 
     static void TearDownTestSuite() {
         client_.reset();
-        server_->stopListening();
+        server_->stop();
         server_thread_.join();
         server_.reset();
     }
