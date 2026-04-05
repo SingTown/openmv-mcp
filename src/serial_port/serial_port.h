@@ -43,7 +43,7 @@ class SerialPort {
     int fd_ = -1;
 #endif
     std::vector<uint8_t> write_buf_;
-    static constexpr size_t kRecvBufSize = 8192;
+    static constexpr size_t kRecvBufSize = 1024 * 1024;
     RingBuffer<uint8_t> recv_buf_{kRecvBufSize};
 };
 

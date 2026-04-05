@@ -4,10 +4,12 @@
 #include <cstdint>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <thread>
 
+#include "frame.h"
 #include "serial_port/serial_port.h"
 #include "utils/utf8_buffer.h"
 
@@ -33,8 +35,10 @@ class Protocol {
 
     virtual void execScript(const std::string& script) = 0;
     virtual void stopScript() = 0;
+    virtual void enableFrame(bool enable) = 0;
 
     [[nodiscard]] std::string readTerminal();
+    [[nodiscard]] std::optional<Frame> readFrame();
     [[nodiscard]] bool isConnected() const { return port_ && port_->isOpen(); }
     [[nodiscard]] bool scriptRunning() const { return script_running_.load(); }
 
@@ -56,6 +60,8 @@ class Protocol {
     std::thread loop_thread_;
     std::mutex io_mutex_;
     Utf8Buffer terminal_buf_;
+    std::mutex frame_mutex_;
+    std::optional<Frame> frame_;
     std::atomic<bool> loop_running_{false};
     std::atomic<bool> script_running_{false};
 };

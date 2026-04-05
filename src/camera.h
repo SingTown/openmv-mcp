@@ -1,8 +1,10 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 #include <string>
 
+#include "frame.h"
 #include "nlohmann/json.hpp"
 
 namespace mcp {
@@ -28,6 +30,8 @@ class Camera {
     void stopScript();
     [[nodiscard]] std::string readTerminal();
     [[nodiscard]] bool scriptRunning() const;
+    [[nodiscard]] std::optional<Frame> readFrame();
+    void enableFrame(bool enable);
 
  private:
     std::shared_ptr<SerialPort> port_;

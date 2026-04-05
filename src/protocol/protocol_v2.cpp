@@ -59,6 +59,10 @@ constexpr uint32_t EXEC = 0x02;
 constexpr uint32_t RESET = 0x03;
 }  // namespace StdinIoctl
 
+namespace StreamIoctl {
+constexpr uint32_t STREAM_CTRL = 0x00;
+}  // namespace StreamIoctl
+
 namespace EventType {
 constexpr uint8_t CHANNEL_REGISTERED = 0x00;
 constexpr uint8_t CHANNEL_UNREGISTERED = 0x01;
@@ -222,6 +226,8 @@ void ProtocolV2::connect(std::shared_ptr<SerialPort> port) {
         // Stop any running script
         channelIoctl(stdin_channel_, StdinIoctl::STOP);
 
+        enableFrame(true);
+
         systemInfo.protocol_version = 2;
         startLoopThread();
     } catch (...) {
@@ -237,6 +243,7 @@ void ProtocolV2::disconnect() {
     caps_max_payload_ = 4096;
     stdin_channel_ = 0;
     stdout_channel_ = 0;
+    stream_channel_ = 0;
     channels_stale_ = false;
     resync_pending_ = false;
 }
@@ -272,17 +279,37 @@ void ProtocolV2::discoverChannels() {
         auto nul = name.find('\0');
         if (nul != std::string::npos) name.resize(nul);
 
-        if (name == "stdin") stdin_channel_ = id;
-        if (name == "stdout") stdout_channel_ = id;
+        if (name == "stdin") {
+            stdin_channel_ = id;
+        }
+        if (name == "stdout") {
+            stdout_channel_ = id;
+        }
+        if (name == "stream") {
+            stream_channel_ = id;
+        }
     }
     if (stdin_channel_ == 0 || stdout_channel_ == 0) {
         throw std::runtime_error("Required channels (stdin/stdout) not found");
     }
 }
 
-void ProtocolV2::channelIoctl(uint8_t channel, uint32_t cmd) {
-    std::vector<uint8_t> payload(4);
+void ProtocolV2::channelLock(uint8_t channel) {
+    sendPacket({sequence_, channel, 0, Opcode::CHANNEL_LOCK, 0, {}});
+    readResponse();
+}
+
+void ProtocolV2::channelUnlock(uint8_t channel) {
+    sendPacket({sequence_, channel, 0, Opcode::CHANNEL_UNLOCK, 0, {}});
+    readResponse();
+}
+
+void ProtocolV2::channelIoctl(uint8_t channel, uint32_t cmd, const std::vector<uint32_t>& args) {
+    std::vector<uint8_t> payload(4 + args.size() * 4);
     std::memcpy(payload.data(), &cmd, 4);
+    for (size_t i = 0; i < args.size(); i++) {
+        std::memcpy(payload.data() + 4 + (i * 4), &args[i], 4);
+    }
     sendPacket({sequence_, channel, 0, Opcode::CHANNEL_IOCTL, static_cast<uint16_t>(payload.size()), payload});
     readResponse();
 }
@@ -347,6 +374,15 @@ void ProtocolV2::stopScript() {
     channelIoctl(stdin_channel_, StdinIoctl::STOP);
 }
 
+void ProtocolV2::enableFrame(bool enable) {
+    requireOpen();
+
+    std::lock_guard<std::mutex> lock(io_mutex_);
+    if (stream_channel_ != 0) {
+        channelIoctl(stream_channel_, StreamIoctl::STREAM_CTRL, {enable ? 1U : 0U});
+    }
+}
+
 void ProtocolV2::resync() {
     sequence_ = 0;
     max_payload_ = Proto::MIN_PAYLOAD_SIZE;
@@ -397,13 +433,58 @@ void ProtocolV2::poll() {
     }
 
     uint32_t flags = channelPoll();
-    script_running_.store((flags & (1u << stdin_channel_)) != 0);
-    if (!(flags & (1u << stdout_channel_))) return;
+    script_running_.store((flags & (1U << stdin_channel_)) != 0);
 
-    uint32_t available = channelSize(stdout_channel_);
-    if (available == 0) return;
-    auto data = channelRead(stdout_channel_, 0, available);
-    terminal_buf_.append(data);
+    // Read stdout terminal output
+    if ((flags & (1U << stdout_channel_)) != 0) {
+        uint32_t available = channelSize(stdout_channel_);
+        if (available > 0) {
+            auto data = channelRead(stdout_channel_, 0, available);
+            terminal_buf_.append(data);
+        }
+    }
+
+    // Read stream channel frame
+    if (stream_channel_ != 0 && (flags & (1U << stream_channel_)) != 0) {
+        pollFrame();
+    }
+}
+
+void ProtocolV2::pollFrame() {
+    constexpr uint32_t kFrameHeaderSize = 20;
+
+    channelLock(stream_channel_);
+
+    std::vector<uint8_t> data;
+    uint32_t size = channelSize(stream_channel_);
+    if (size > kFrameHeaderSize) {
+        data = channelRead(stream_channel_, 0, size);
+    }
+    channelUnlock(stream_channel_);
+
+    if (data.size() < kFrameHeaderSize) {
+        return;
+    }
+
+    uint32_t width = 0;
+    uint32_t height = 0;
+    uint32_t pixformat = 0;
+    uint32_t depth = 0;
+    uint32_t offset = 0;
+    std::memcpy(&width, data.data(), 4);
+    std::memcpy(&height, data.data() + 4, 4);
+    std::memcpy(&pixformat, data.data() + 8, 4);
+    std::memcpy(&depth, data.data() + 12, 4);
+    std::memcpy(&offset, data.data() + 16, 4);
+
+    if (offset > data.size()) {
+        return;
+    }
+
+    std::vector<uint8_t> pixels(data.begin() + static_cast<ptrdiff_t>(offset), data.end());
+
+    std::lock_guard<std::mutex> flock(frame_mutex_);
+    frame_ = Frame(width, height, pixformat, std::move(pixels));
 }
 
 }  // namespace mcp

@@ -11,6 +11,7 @@ set(CORE_SOURCES
     src/server/mcp_tool.cpp
     src/board.cpp
     src/camera.cpp
+    src/frame.cpp
     src/protocol/protocol.cpp
     src/protocol/protocol_v1.cpp
     src/protocol/protocol_v2.cpp
@@ -64,6 +65,8 @@ include(GoogleTest)
 
 add_executable(openmv_mcp_server_test ${CORE_SOURCES}
     tests/mcp_server_test.cpp
+    tests/frame_test.cpp
+    tests/base64_test.cpp
     tests/crc_test.cpp
     tests/ring_buffer_test.cpp
     tests/utf8_buffer_test.cpp

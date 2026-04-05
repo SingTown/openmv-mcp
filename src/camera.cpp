@@ -109,6 +109,14 @@ bool Camera::scriptRunning() const {
     return protocol_->scriptRunning();
 }
 
+std::optional<Frame> Camera::readFrame() {
+    return protocol_->readFrame();
+}
+
+void Camera::enableFrame(bool enable) {
+    protocol_->enableFrame(enable);
+}
+
 int Camera::detectProtocol(SerialPort& port) {
     // V1 probe: CMD + SENSOR_ID opcode
     uint8_t v1_cmd[6] = {0x30, 0x87, 0x04, 0x00, 0x00, 0x00};

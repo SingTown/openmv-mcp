@@ -38,6 +38,7 @@ class ProtocolV2 : public Protocol {
     void disconnect() override;
     void execScript(const std::string& script) override;
     void stopScript() override;
+    void enableFrame(bool enable) override;
 
  private:
     uint8_t sequence_ = 0;
@@ -47,6 +48,7 @@ class ProtocolV2 : public Protocol {
     // Channel IDs
     uint8_t stdin_channel_ = 0;
     uint8_t stdout_channel_ = 0;
+    uint8_t stream_channel_ = 0;
 
     bool channels_stale_ = false;
     std::atomic<bool> resync_pending_{false};
@@ -58,13 +60,16 @@ class ProtocolV2 : public Protocol {
     void resync();
 
     void discoverChannels();
-    void channelIoctl(uint8_t channel, uint32_t cmd);
+    void channelLock(uint8_t channel);
+    void channelUnlock(uint8_t channel);
+    void channelIoctl(uint8_t channel, uint32_t cmd, const std::vector<uint32_t>& args = {});
     void channelWrite(uint8_t channel, const std::vector<uint8_t>& data);
     uint32_t channelPoll();
     uint32_t channelSize(uint8_t channel);
     std::vector<uint8_t> channelRead(uint8_t channel, uint32_t offset, uint32_t len);
 
     void poll() override;
+    void pollFrame();
 };
 
 }  // namespace mcp

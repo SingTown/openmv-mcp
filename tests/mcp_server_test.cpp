@@ -90,7 +90,7 @@ TEST_F(McpServerTest, ToolsList) {
     ASSERT_TRUE(resp.contains("result"));
     auto& tools = resp["result"]["tools"];
     ASSERT_TRUE(tools.is_array());
-    EXPECT_EQ(tools.size(), 8u);
+    EXPECT_EQ(tools.size(), 9U);
     bool found = false;
     for (const auto& t : tools) {
         if (t["name"] == "list_cameras") {
@@ -172,13 +172,19 @@ TEST_F(McpServerTest, ScriptRunningNotConnected) {
     EXPECT_TRUE(resp["result"].value("isError", false));
 }
 
+TEST_F(McpServerTest, ReadFrameNotConnected) {
+    auto resp = call_tool(65, "read_frame", {{"cameraPath", "/dev/cu.nonexistent"}});
+    ASSERT_TRUE(resp.contains("result"));
+    EXPECT_TRUE(resp["result"].value("isError", false));
+}
+
 TEST_F(McpServerTest, ToolsListIncludesAllTools) {
     json req = {{"jsonrpc", "2.0"}, {"id", 64}, {"method", "tools/list"}};
     auto resp = post_mcp(req);
     ASSERT_TRUE(resp.contains("result"));
     auto& tools = resp["result"]["tools"];
     ASSERT_TRUE(tools.is_array());
-    EXPECT_EQ(tools.size(), 8u);
+    EXPECT_EQ(tools.size(), 9U);
     bool found_connect = false;
     bool found_disconnect = false;
     bool found_info = false;
@@ -186,6 +192,7 @@ TEST_F(McpServerTest, ToolsListIncludesAllTools) {
     bool found_stop = false;
     bool found_terminal = false;
     bool found_script_running = false;
+    bool found_read_frame = false;
     for (const auto& t : tools) {
         if (t["name"] == "camera_connect") found_connect = true;
         if (t["name"] == "camera_disconnect") found_disconnect = true;
@@ -194,6 +201,7 @@ TEST_F(McpServerTest, ToolsListIncludesAllTools) {
         if (t["name"] == "stop_script") found_stop = true;
         if (t["name"] == "read_terminal") found_terminal = true;
         if (t["name"] == "script_running") found_script_running = true;
+        if (t["name"] == "read_frame") found_read_frame = true;
     }
     EXPECT_TRUE(found_connect);
     EXPECT_TRUE(found_disconnect);
@@ -202,6 +210,7 @@ TEST_F(McpServerTest, ToolsListIncludesAllTools) {
     EXPECT_TRUE(found_stop);
     EXPECT_TRUE(found_terminal);
     EXPECT_TRUE(found_script_running);
+    EXPECT_TRUE(found_read_frame);
 }
 
 // --- Device integration tests (auto-discover, skip if no camera) ---
@@ -332,4 +341,65 @@ TEST_F(McpServerTest, DeviceStopScript) {
     EXPECT_EQ(after_stop.find("running"), std::string::npos);
 
     call_tool(499, "camera_disconnect", {{"cameraPath", path}});
+}
+
+TEST_F(McpServerTest, DeviceReadFrame) {
+    auto path = discoverCamera(call_tool);
+    if (path.empty()) GTEST_SKIP() << "No camera connected";
+
+    auto conn = call_tool(500, "camera_connect", {{"cameraPath", path}});
+    ASSERT_TRUE(conn.contains("result")) << conn.dump();
+    ASSERT_FALSE(conn["result"].value("isError", false)) << conn.dump();
+
+    // Run a snapshot script (uses csi module for OpenMV N6 series cameras)
+    std::string script =
+        "import csi, time\n"
+        "csi0 = csi.CSI()\n"
+        "csi0.reset()\n"
+        "csi0.pixformat(csi.RGB565)\n"
+        "csi0.framesize(csi.QVGA)\n"
+        "csi0.snapshot(time=2000)\n"
+        "while True:\n"
+        "    csi0.snapshot()\n"
+        "    time.sleep_ms(100)\n";
+    auto run_resp = call_tool(501, "run_script", {{"cameraPath", path}, {"script", script}});
+    ASSERT_FALSE(run_resp["result"].value("isError", false)) << run_resp.dump();
+
+    // Wait for frames to be available, then read one
+    // The snapshot(time=2000) blocks for 2s, so wait longer
+    json frame_content;
+    std::string last_error;
+    for (int i = 0; i < 200; ++i) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        auto resp = call_tool(510 + i, "read_frame", {{"cameraPath", path}});
+        if (resp.is_null() || !resp.contains("result")) continue;
+        if (resp["result"].value("isError", false)) {
+            auto& content = resp["result"]["content"];
+            if (content.is_array() && !content.empty() && content[0].contains("text")) {
+                last_error = content[0]["text"].get<std::string>();
+            }
+            continue;
+        }
+        auto& content = resp["result"]["content"];
+        if (!content.is_array() || content.empty()) continue;
+        if (content[0]["type"] != "image") continue;
+        auto data = content[0]["data"].get<std::string>();
+        if (!data.empty()) {
+            frame_content = content[0];
+            break;
+        }
+    }
+    if (frame_content.is_null() && !last_error.empty()) {
+        std::cout << "Last read_frame error: " << last_error << "\n";
+    }
+
+    ASSERT_FALSE(frame_content.is_null()) << "Failed to read a frame within timeout";
+    EXPECT_EQ(frame_content["type"], "image");
+    EXPECT_EQ(frame_content["mimeType"], "image/jpeg");
+    EXPECT_FALSE(frame_content["data"].get<std::string>().empty());
+    std::cout << "Frame base64 size: " << frame_content["data"].get<std::string>().size() << " bytes\n";
+
+    // Stop the script and disconnect
+    call_tool(598, "stop_script", {{"cameraPath", path}});
+    call_tool(599, "camera_disconnect", {{"cameraPath", path}});
 }

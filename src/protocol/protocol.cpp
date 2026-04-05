@@ -15,6 +15,11 @@ std::string Protocol::readTerminal() {
     return terminal_buf_.take();
 }
 
+std::optional<Frame> Protocol::readFrame() {
+    std::lock_guard<std::mutex> lock(frame_mutex_);
+    return std::exchange(frame_, std::nullopt);
+}
+
 void Protocol::startLoopThread() {
     loop_running_ = true;
     loop_thread_ = std::thread([this]() {

@@ -129,6 +129,23 @@ static const McpTool TOOL_SCRIPT_RUNNING = {
     },
 };
 
+static const McpTool TOOL_READ_FRAME = {
+    "read_frame",
+    "Capture a single frame from the camera's frame buffer. A script that captures frames must be "
+    "running. Returns the image as base64-encoded JPEG.",
+    CAMERA_PATH_SCHEMA,
+    [](McpContext& ctx, const json& args) {
+        auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
+        auto frame = cam.readFrame();
+        if (!frame) {
+            throw std::runtime_error("No frame available");
+        }
+        McpContent resp;
+        resp.addImage(frame->toBase64Jpeg(), "image/jpeg");
+        return resp;
+    },
+};
+
 const std::map<std::string, const McpTool*> ALL_MCP_TOOLS = {
     {TOOL_LIST_CAMERAS.name, &TOOL_LIST_CAMERAS},
     {TOOL_CAMERA_CONNECT.name, &TOOL_CAMERA_CONNECT},
@@ -138,6 +155,7 @@ const std::map<std::string, const McpTool*> ALL_MCP_TOOLS = {
     {TOOL_STOP_SCRIPT.name, &TOOL_STOP_SCRIPT},
     {TOOL_READ_TERMINAL.name, &TOOL_READ_TERMINAL},
     {TOOL_SCRIPT_RUNNING.name, &TOOL_SCRIPT_RUNNING},
+    {TOOL_READ_FRAME.name, &TOOL_READ_FRAME},
 };
 
 }  // namespace mcp

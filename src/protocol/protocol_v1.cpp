@@ -20,7 +20,9 @@ constexpr uint8_t SCRIPT_STOP = 0x06;
 constexpr uint8_t FW_VERSION = 0x80;
 constexpr uint8_t ARCH_STR = 0x83;
 constexpr uint8_t SENSOR_ID = 0x90;
+constexpr uint8_t FB_ENABLE = 0x0D;
 constexpr uint8_t GET_STATE = 0x93;
+constexpr uint8_t FRAME_DUMP = 0x82;
 }  // namespace V1Opcode
 
 namespace V1Const {
@@ -32,6 +34,13 @@ constexpr int SCRIPT_EXEC_2_START_DELAY = 25;
 constexpr int SCRIPT_EXEC_2_END_DELAY = 50;
 constexpr int SCRIPT_STOP_START_DELAY = 50;
 constexpr int SCRIPT_STOP_END_DELAY = 50;
+constexpr uint32_t FB_ENABLE_PAYLOAD_LEN = 4;
+constexpr int FB_ENABLE_0_START_DELAY = 50;
+constexpr int FB_ENABLE_0_END_DELAY = 25;
+constexpr int FB_ENABLE_1_START_DELAY = 25;
+constexpr int FB_ENABLE_1_END_DELAY = 50;
+constexpr int FRAME_DUMP_START_DELAY = 50;
+constexpr int FRAME_DUMP_END_DELAY = 25;
 }  // namespace V1Const
 
 void ProtocolV1::delay(int ms) {
@@ -69,6 +78,8 @@ void ProtocolV1::connect(std::shared_ptr<SerialPort> port) {
         delay(V1Const::SCRIPT_STOP_START_DELAY);
         sendCommand(V1Opcode::SCRIPT_STOP, 0);
         delay(V1Const::SCRIPT_STOP_END_DELAY);
+
+        enableFrame(true);
 
         systemInfo.protocol_version = 1;
         startLoopThread();
@@ -146,6 +157,22 @@ void ProtocolV1::stopScript() {
     delay(V1Const::SCRIPT_STOP_END_DELAY);
 }
 
+void ProtocolV1::enableFrame(bool enable) {
+    requireOpen();
+
+    std::lock_guard<std::mutex> lock(io_mutex_);
+
+    // Breakup mode (firmware >= 3.5.3): send header and payload separately
+    delay(V1Const::FB_ENABLE_0_START_DELAY);
+    sendCommand(V1Opcode::FB_ENABLE, V1Const::FB_ENABLE_PAYLOAD_LEN);
+    delay(V1Const::FB_ENABLE_0_END_DELAY);
+
+    delay(V1Const::FB_ENABLE_1_START_DELAY);
+    port_->write_le32(enable ? 1 : 0);
+    if (!port_->send()) throw std::runtime_error("Failed to send FB_ENABLE payload");
+    delay(V1Const::FB_ENABLE_1_END_DELAY);
+}
+
 void ProtocolV1::poll() {
     std::lock_guard<std::mutex> lock(io_mutex_);
 
@@ -156,6 +183,38 @@ void ProtocolV1::poll() {
 
     if (state.hasText() && !state.textData().empty()) {
         terminal_buf_.append(state.textData());
+    }
+
+    if (state.hasFrame()) {
+        uint32_t w = state.frameWidth();
+        uint32_t h = state.frameHeight();
+        uint32_t bpp = state.frameBpp();
+
+        if (w > 0 && h > 0) {
+            uint32_t pixformat = 0;
+            uint32_t size = 0;
+            if (bpp >= 3) {
+                pixformat = PixFormat::JPEG;
+                size = w * h * bpp;
+            } else if (bpp == 2) {
+                pixformat = PixFormat::RGB565;
+                size = w * h * 2;
+            } else if (bpp == 1) {
+                pixformat = PixFormat::GRAYSCALE;
+                size = w * h;
+            } else {
+                pixformat = PixFormat::BINARY;
+                size = ((w + 7) / 8) * h;
+            }
+
+            delay(V1Const::FRAME_DUMP_START_DELAY);
+            sendCommand(V1Opcode::FRAME_DUMP, size);
+            delay(V1Const::FRAME_DUMP_END_DELAY);
+            auto data = port_->read_bytes(size);
+
+            std::lock_guard<std::mutex> flock(frame_mutex_);
+            frame_ = Frame(w, h, pixformat, std::move(data));
+        }
     }
 }
 
