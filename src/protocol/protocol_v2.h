@@ -60,6 +60,7 @@ class ProtocolV2 : public Protocol {
     void discoverChannels();
     void channelIoctl(uint8_t channel, uint32_t cmd);
     void channelWrite(uint8_t channel, const std::vector<uint8_t>& data);
+    uint32_t channelPoll();
     uint32_t channelSize(uint8_t channel);
     std::vector<uint8_t> channelRead(uint8_t channel, uint32_t offset, uint32_t len);
 

@@ -44,6 +44,7 @@ constexpr uint8_t SYS_RESET = 0x10;
 constexpr uint8_t SYS_BOOT = 0x11;
 constexpr uint8_t SYS_INFO = 0x12;
 constexpr uint8_t CHANNEL_LIST = 0x20;
+constexpr uint8_t CHANNEL_POLL = 0x21;
 constexpr uint8_t CHANNEL_LOCK = 0x22;
 constexpr uint8_t CHANNEL_UNLOCK = 0x23;
 constexpr uint8_t CHANNEL_SIZE = 0x25;
@@ -302,6 +303,15 @@ void ProtocolV2::channelWrite(uint8_t channel, const std::vector<uint8_t>& data)
     }
 }
 
+uint32_t ProtocolV2::channelPoll() {
+    sendPacket({sequence_, 0, 0, Opcode::CHANNEL_POLL, 0, {}});
+    auto data = readResponse();
+    if (data.size() < 4) return 0;
+    uint32_t flags = 0;
+    std::memcpy(&flags, data.data(), 4);
+    return flags;
+}
+
 uint32_t ProtocolV2::channelSize(uint8_t channel) {
     sendPacket({sequence_, channel, 0, Opcode::CHANNEL_SIZE, 0, {}});
     auto data = readResponse();
@@ -385,6 +395,10 @@ void ProtocolV2::poll() {
             // Will retry on next poll
         }
     }
+
+    uint32_t flags = channelPoll();
+    script_running_.store((flags & (1u << stdin_channel_)) != 0);
+    if (!(flags & (1u << stdout_channel_))) return;
 
     uint32_t available = channelSize(stdout_channel_);
     if (available == 0) return;

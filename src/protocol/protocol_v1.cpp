@@ -6,6 +6,7 @@
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <tuple>
 
 #include "board.h"
 #include "serial_port/serial_port.h"
@@ -18,9 +19,8 @@ constexpr uint8_t SCRIPT_EXEC = 0x05;
 constexpr uint8_t SCRIPT_STOP = 0x06;
 constexpr uint8_t FW_VERSION = 0x80;
 constexpr uint8_t ARCH_STR = 0x83;
-constexpr uint8_t TX_BUF_LEN = 0x8E;
-constexpr uint8_t TX_BUF_READ = 0x8F;
 constexpr uint8_t SENSOR_ID = 0x90;
+constexpr uint8_t GET_STATE = 0x93;
 }  // namespace V1Opcode
 
 namespace V1Const {
@@ -54,6 +54,14 @@ void ProtocolV1::connect(std::shared_ptr<SerialPort> port) {
 
     try {
         readFwVersion();
+
+        // GET_STATE (0x93) requires firmware >= 4.5.6
+        auto& v = systemInfo.fw_version;
+        if (std::make_tuple(v[0], v[1], v[2]) < std::make_tuple(4U, 5U, 6U)) {
+            throw std::runtime_error("Firmware version " + std::to_string(v[0]) + "." + std::to_string(v[1]) + "." +
+                                     std::to_string(v[2]) + " is too old, requires >= 4.5.6");
+        }
+
         readArchStr();
         readSensorId();
 
@@ -140,17 +148,15 @@ void ProtocolV1::stopScript() {
 
 void ProtocolV1::poll() {
     std::lock_guard<std::mutex> lock(io_mutex_);
-    sendCommand(V1Opcode::TX_BUF_LEN, 4);
-    uint32_t available = port_->read_le32();
-    if (available == 0) return;
 
-    uint32_t readLen = available;
-    if (readLen % V1Const::TABOO_PACKET_SIZE == 0) {
-        readLen -= 1;
+    sendCommand(V1Opcode::GET_STATE, V1State::kPayloadLen);
+    V1State state(port_->read_bytes(V1State::kPayloadLen));
+
+    script_running_.store(state.scriptRunning());
+
+    if (state.hasText() && !state.textData().empty()) {
+        terminal_buf_.append(state.textData());
     }
-    sendCommand(V1Opcode::TX_BUF_READ, readLen);
-    auto bytes = port_->read_bytes(readLen);
-    terminal_buf_.append(bytes);
 }
 
 }  // namespace mcp

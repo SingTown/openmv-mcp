@@ -166,8 +166,14 @@ TEST_F(McpServerTest, CameraInfoNotConnected) {
     EXPECT_TRUE(resp["result"].value("isError", false));
 }
 
+TEST_F(McpServerTest, ScriptRunningNotConnected) {
+    auto resp = call_tool(63, "script_running", {{"cameraPath", "/dev/cu.nonexistent"}});
+    ASSERT_TRUE(resp.contains("result"));
+    EXPECT_TRUE(resp["result"].value("isError", false));
+}
+
 TEST_F(McpServerTest, ToolsListIncludesAllTools) {
-    json req = {{"jsonrpc", "2.0"}, {"id", 63}, {"method", "tools/list"}};
+    json req = {{"jsonrpc", "2.0"}, {"id", 64}, {"method", "tools/list"}};
     auto resp = post_mcp(req);
     ASSERT_TRUE(resp.contains("result"));
     auto& tools = resp["result"]["tools"];
@@ -289,13 +295,27 @@ TEST_F(McpServerTest, DeviceStopScript) {
     std::cout << "Output before stop: [" << output << "]" << std::endl;
     EXPECT_NE(output.find("running"), std::string::npos);
 
+    // Check script_running reports true while script is active
+    auto sr_resp = call_tool(460, "script_running", {{"cameraPath", path}});
+    ASSERT_FALSE(sr_resp["result"].value("isError", false)) << sr_resp.dump();
+    auto sr_data = json::parse(sr_resp["result"]["content"][0]["text"].get<std::string>());
+    EXPECT_TRUE(sr_data["running"].get<bool>()) << "script_running should be true while script is active";
+
     // Stop the script
     auto stop_resp = call_tool(470, "stop_script", {{"cameraPath", path}});
     ASSERT_TRUE(stop_resp.contains("result")) << stop_resp.dump();
     ASSERT_FALSE(stop_resp["result"].value("isError", false)) << stop_resp.dump();
 
-    // Wait, clear, then check no new "running" output
+    // Wait for poll to update script_running state
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    // Check script_running reports false after stop
+    auto sr_after = call_tool(473, "script_running", {{"cameraPath", path}});
+    ASSERT_FALSE(sr_after["result"].value("isError", false)) << sr_after.dump();
+    auto sr_after_data = json::parse(sr_after["result"]["content"][0]["text"].get<std::string>());
+    EXPECT_FALSE(sr_after_data["running"].get<bool>()) << "script_running should be false after stop";
+
+    // Clear and verify no new output
     call_tool(471, "read_terminal", {{"cameraPath", path}});
 
     std::this_thread::sleep_for(std::chrono::milliseconds(500));
