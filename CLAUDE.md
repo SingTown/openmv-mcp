@@ -40,13 +40,34 @@ npx @modelcontextprotocol/inspector --config mcp-inspector.json
 
 This is an MCP (Model Context Protocol) server for controlling OpenMV cameras. It uses **Streamable HTTP** transport (not stdio) over JSON-RPC 2.0.
 
-- **Transport**: HTTP POST on `/mcp` endpoint, health check on `/GET /health`
-- **Protocol**: JSON-RPC 2.0, MCP protocol version `2025-03-26`
-- **Core class**: `mcp::McpServer` in `src/mcp_server.h/.cpp` — handles HTTP routing, JSON-RPC dispatch, and tool registration
-- **Request flow**: `server_.Post("/mcp")` → `handleRequest()` → method-specific handler (`handleInitialize`, `handleToolsList`, `handleToolsCall`)
-- **Tool definitions**: returned by `toolDefinitions()` static function in `mcp_server.cpp`; tool dispatch happens in `handleToolsCall()`
+### HTTP Endpoints
 
-C++17, header-only third-party libs (`cpp-httplib`, `nlohmann/json`) managed as git submodules in `3rdparty/`. Google Test fetched at build time via CMake FetchContent.
+- `POST /mcp` — JSON-RPC 2.0 endpoint (MCP protocol version `2025-03-26`)
+- `GET /health` — health check, returns `{"status": "ok"}`
+
+### WebSocket Endpoints (real-time push)
+
+- `GET /ws/script?camera=<path>` — script running status stream (JSON)
+- `GET /ws/terminal?camera=<path>` — terminal output stream (text)
+- `GET /ws/frame?camera=<path>` — frame buffer stream (binary JPEG)
+
+### Core Modules
+
+- **MCP Server**: `src/server/mcp_server.h/.cpp` — HTTP routing, JSON-RPC dispatch, WebSocket endpoints
+- **MCP Tool**: `src/server/mcp_tool.h/.cpp` — tool definitions (`ALL_MCP_TOOLS` vector) and tool call dispatch
+- **MCP Context**: `src/server/mcp_context.h` — camera instance management
+- **Camera**: `src/camera.h/.cpp` — abstract camera class with factory pattern (`Camera::create()`) and callback system (connected/script/terminal/frame)
+- **Frame**: `src/frame.h/.cpp` — frame data with pixel format conversion, JPEG encoding via stb
+- **Protocol**: `src/protocol/` — OpenMV protocol v1 (opcode-based) and v2 (packet-based with CRC)
+- **Serial Port**: `src/serial_port/` — cross-platform serial I/O (macOS/Linux/Windows)
+- **Camera List**: `src/camera_list/` — platform-specific USB camera discovery
+- **Utilities**: `src/utils/` — base64, CRC, ring buffer, UTF-8 buffer
+
+### Request Flow
+
+`POST /mcp` → `handleRequest()` → method handler (`handleInitialize`, `handleToolsList`, `handleToolsCall`) → tool dispatch via `McpTool::call()`
+
+C++17, header-only third-party libs (`cpp-httplib`, `nlohmann/json`, `stb`) managed as git submodules in `3rdparty/`. Google Test fetched at build time via CMake FetchContent.
 
 ## Conventions
 
