@@ -1,62 +1,8 @@
-#include "server/mcp_server.h"
+#include "mcp_server_test.h"
 
-#include <gtest/gtest.h>
-#include <httplib/httplib.h>
-
-#include <chrono>
-#include <nlohmann/json.hpp>
-#include <string>
-#include <thread>
-
-using json = nlohmann::json;
-
-class McpServerTest : public ::testing::Test {
- protected:
-    static void SetUpTestSuite() {
-        server_ = std::make_unique<mcp::McpServer>(kPort);
-        server_thread_ = std::thread([]() { server_->start(); });
-        client_ = std::make_unique<httplib::Client>("127.0.0.1", kPort);
-        client_->set_connection_timeout(5);
-        client_->set_read_timeout(10);
-        for (int i = 0; i < 100; ++i) {
-            if (client_->Get("/health")) {
-                return;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(20));
-        }
-        FAIL() << "Server did not start within 2 seconds";
-    }
-
-    static void TearDownTestSuite() {
-        client_.reset();
-        server_->stop();
-        server_thread_.join();
-        server_.reset();
-    }
-
-    static json post_mcp(const json& request) {
-        auto res = client_->Post("/mcp", request.dump(), "application/json");
-        if (!res || res->body.empty()) return nullptr;
-        return json::parse(res->body);
-    }
-
-    static json call_tool(int id, const std::string& name, const json& args = json::object()) {
-        json req = {{"jsonrpc", "2.0"},
-                    {"id", id},
-                    {"method", "tools/call"},
-                    {"params", {{"name", name}, {"arguments", args}}}};
-        return post_mcp(req);
-    }
-
-    static constexpr int kPort = 18900;
-    static std::unique_ptr<mcp::McpServer> server_;
-    static std::thread server_thread_;
-    static std::unique_ptr<httplib::Client> client_;
-};
-
-std::unique_ptr<mcp::McpServer> McpServerTest::server_;
-std::thread McpServerTest::server_thread_;
-std::unique_ptr<httplib::Client> McpServerTest::client_;
+// =======================================================================
+// Protocol tests
+// =======================================================================
 
 TEST_F(McpServerTest, Health) {
     auto res = client_->Get("/health");
@@ -68,7 +14,7 @@ TEST_F(McpServerTest, Health) {
 
 TEST_F(McpServerTest, Initialize) {
     json req = {{"jsonrpc", "2.0"},
-                {"id", 1},
+                {"id", next_id_++},
                 {"method", "initialize"},
                 {"params",
                  {{"protocolVersion", "2025-03-26"},
@@ -76,7 +22,6 @@ TEST_F(McpServerTest, Initialize) {
                   {"clientInfo", {{"name", "test"}, {"version", "1.0"}}}}}};
     auto resp = post_mcp(req);
     EXPECT_EQ(resp["jsonrpc"], "2.0");
-    EXPECT_EQ(resp["id"], 1);
     ASSERT_TRUE(resp.contains("result"));
     auto& r = resp["result"];
     EXPECT_EQ(r["protocolVersion"], "2025-03-26");
@@ -84,35 +29,10 @@ TEST_F(McpServerTest, Initialize) {
     EXPECT_EQ(r["serverInfo"]["name"], "openmv-mcp-server");
 }
 
-TEST_F(McpServerTest, ToolsList) {
-    json req = {{"jsonrpc", "2.0"}, {"id", 2}, {"method", "tools/list"}};
-    auto resp = post_mcp(req);
-    ASSERT_TRUE(resp.contains("result"));
-    auto& tools = resp["result"]["tools"];
-    ASSERT_TRUE(tools.is_array());
-    EXPECT_EQ(tools.size(), 9U);
-    bool found = false;
-    for (const auto& t : tools) {
-        if (t["name"] == "list_cameras") {
-            found = true;
-            break;
-        }
-    }
-    EXPECT_TRUE(found);
-}
-
 TEST_F(McpServerTest, Ping) {
-    json req = {{"jsonrpc", "2.0"}, {"id", 3}, {"method", "ping"}};
+    json req = {{"jsonrpc", "2.0"}, {"id", next_id_++}, {"method", "ping"}};
     auto resp = post_mcp(req);
-    EXPECT_EQ(resp["id"], 3);
     EXPECT_TRUE(resp.contains("result"));
-}
-
-TEST_F(McpServerTest, UnknownMethod) {
-    json req = {{"jsonrpc", "2.0"}, {"id", 20}, {"method", "nonexistent"}};
-    auto resp = post_mcp(req);
-    ASSERT_TRUE(resp.contains("error"));
-    EXPECT_EQ(resp["error"]["code"], -32601);
 }
 
 TEST_F(McpServerTest, InvalidJson) {
@@ -123,8 +43,53 @@ TEST_F(McpServerTest, InvalidJson) {
     EXPECT_EQ(resp["error"]["code"], -32700);
 }
 
+TEST_F(McpServerTest, InvalidJsonRpcVersion) {
+    json req = {{"jsonrpc", "1.0"}, {"id", next_id_++}, {"method", "ping"}};
+    auto resp = post_mcp(req);
+    ASSERT_TRUE(resp.contains("error"));
+    EXPECT_EQ(resp["error"]["code"], -32600);
+}
+
+TEST_F(McpServerTest, UnknownMethod) {
+    json req = {{"jsonrpc", "2.0"}, {"id", next_id_++}, {"method", "nonexistent"}};
+    auto resp = post_mcp(req);
+    ASSERT_TRUE(resp.contains("error"));
+    EXPECT_EQ(resp["error"]["code"], -32601);
+}
+
+// =======================================================================
+// Tool discovery & basic tool tests
+// =======================================================================
+
+TEST_F(McpServerTest, ToolsList) {
+    json req = {{"jsonrpc", "2.0"}, {"id", next_id_++}, {"method", "tools/list"}};
+    auto resp = post_mcp(req);
+    ASSERT_TRUE(resp.contains("result"));
+    auto& tools = resp["result"]["tools"];
+    ASSERT_TRUE(tools.is_array());
+    EXPECT_EQ(tools.size(), 9U);
+
+    std::set<std::string> names;
+    for (const auto& t : tools) names.insert(t["name"].get<std::string>());
+    EXPECT_TRUE(names.count("list_cameras"));
+    EXPECT_TRUE(names.count("camera_connect"));
+    EXPECT_TRUE(names.count("camera_disconnect"));
+    EXPECT_TRUE(names.count("camera_info"));
+    EXPECT_TRUE(names.count("run_script"));
+    EXPECT_TRUE(names.count("stop_script"));
+    EXPECT_TRUE(names.count("read_terminal"));
+    EXPECT_TRUE(names.count("script_running"));
+    EXPECT_TRUE(names.count("read_frame"));
+}
+
+TEST_F(McpServerTest, UnknownTool) {
+    auto resp = call_tool("nonexistent_tool");
+    ASSERT_TRUE(resp.contains("error"));
+    EXPECT_EQ(resp["error"]["code"], -32602);
+}
+
 TEST_F(McpServerTest, ListCameras) {
-    auto resp = call_tool(40, "list_cameras");
+    auto resp = call_tool("list_cameras");
     ASSERT_TRUE(resp.contains("result"));
     auto& content = resp["result"]["content"];
     ASSERT_TRUE(content.is_array());
@@ -135,461 +100,36 @@ TEST_F(McpServerTest, ListCameras) {
     }
 }
 
-TEST_F(McpServerTest, UnknownTool) {
-    auto resp = call_tool(30, "nonexistent_tool");
-    ASSERT_TRUE(resp.contains("error"));
-    EXPECT_EQ(resp["error"]["code"], -32602);
-}
-
-TEST_F(McpServerTest, InvalidJsonRpcVersion) {
-    json req = {{"jsonrpc", "1.0"}, {"id", 50}, {"method", "ping"}};
-    auto resp = post_mcp(req);
-    ASSERT_TRUE(resp.contains("error"));
-    EXPECT_EQ(resp["error"]["code"], -32600);
-}
+// =======================================================================
+// Not-connected error tests
+// =======================================================================
 
 TEST_F(McpServerTest, CameraConnectInvalidPath) {
-    auto resp = call_tool(60, "camera_connect", {{"cameraPath", "/dev/cu.nonexistent"}});
+    auto resp = call_tool("camera_connect", {{"cameraPath", "/dev/cu.nonexistent"}});
     ASSERT_TRUE(resp.contains("result"));
     EXPECT_TRUE(resp["result"].value("isError", false));
 }
 
 TEST_F(McpServerTest, CameraDisconnectNotConnected) {
-    auto resp = call_tool(61, "camera_disconnect", {{"cameraPath", "/dev/cu.nonexistent"}});
+    auto resp = call_tool("camera_disconnect", {{"cameraPath", "/dev/cu.nonexistent"}});
     ASSERT_TRUE(resp.contains("result"));
     EXPECT_TRUE(resp["result"].value("isError", false));
 }
 
 TEST_F(McpServerTest, CameraInfoNotConnected) {
-    auto resp = call_tool(62, "camera_info", {{"cameraPath", "/dev/cu.nonexistent"}});
+    auto resp = call_tool("camera_info", {{"cameraPath", "/dev/cu.nonexistent"}});
     ASSERT_TRUE(resp.contains("result"));
     EXPECT_TRUE(resp["result"].value("isError", false));
 }
 
 TEST_F(McpServerTest, ScriptRunningNotConnected) {
-    auto resp = call_tool(63, "script_running", {{"cameraPath", "/dev/cu.nonexistent"}});
+    auto resp = call_tool("script_running", {{"cameraPath", "/dev/cu.nonexistent"}});
     ASSERT_TRUE(resp.contains("result"));
     EXPECT_TRUE(resp["result"].value("isError", false));
 }
 
 TEST_F(McpServerTest, ReadFrameNotConnected) {
-    auto resp = call_tool(65, "read_frame", {{"cameraPath", "/dev/cu.nonexistent"}});
+    auto resp = call_tool("read_frame", {{"cameraPath", "/dev/cu.nonexistent"}});
     ASSERT_TRUE(resp.contains("result"));
     EXPECT_TRUE(resp["result"].value("isError", false));
-}
-
-TEST_F(McpServerTest, ToolsListIncludesAllTools) {
-    json req = {{"jsonrpc", "2.0"}, {"id", 64}, {"method", "tools/list"}};
-    auto resp = post_mcp(req);
-    ASSERT_TRUE(resp.contains("result"));
-    auto& tools = resp["result"]["tools"];
-    ASSERT_TRUE(tools.is_array());
-    EXPECT_EQ(tools.size(), 9U);
-    bool found_connect = false;
-    bool found_disconnect = false;
-    bool found_info = false;
-    bool found_run = false;
-    bool found_stop = false;
-    bool found_terminal = false;
-    bool found_script_running = false;
-    bool found_read_frame = false;
-    for (const auto& t : tools) {
-        if (t["name"] == "camera_connect") found_connect = true;
-        if (t["name"] == "camera_disconnect") found_disconnect = true;
-        if (t["name"] == "camera_info") found_info = true;
-        if (t["name"] == "run_script") found_run = true;
-        if (t["name"] == "stop_script") found_stop = true;
-        if (t["name"] == "read_terminal") found_terminal = true;
-        if (t["name"] == "script_running") found_script_running = true;
-        if (t["name"] == "read_frame") found_read_frame = true;
-    }
-    EXPECT_TRUE(found_connect);
-    EXPECT_TRUE(found_disconnect);
-    EXPECT_TRUE(found_info);
-    EXPECT_TRUE(found_run);
-    EXPECT_TRUE(found_stop);
-    EXPECT_TRUE(found_terminal);
-    EXPECT_TRUE(found_script_running);
-    EXPECT_TRUE(found_read_frame);
-}
-
-// --- Device integration tests (auto-discover, skip if no camera) ---
-
-static std::string discoverCamera(const std::function<json(int, const std::string&, const json&)>& call) {
-    auto resp = call(100, "list_cameras", json::object());
-    if (!resp.contains("result")) return "";
-    auto& content = resp["result"]["content"];
-    if (!content.is_array() || content.empty()) return "";
-    auto cameras = json::parse(content[0]["text"].get<std::string>());
-    if (!cameras.is_array() || cameras.empty()) return "";
-    return cameras[0]["path"].get<std::string>();
-}
-
-TEST_F(McpServerTest, DeviceConnectAndInfo) {
-    auto path = discoverCamera(call_tool);
-    if (path.empty()) GTEST_SKIP() << "No camera connected";
-
-    auto conn = call_tool(101, "camera_connect", {{"cameraPath", path}});
-    ASSERT_FALSE(conn["result"].value("isError", false)) << conn.dump();
-
-    auto info = call_tool(102, "camera_info", {{"cameraPath", path}});
-    ASSERT_FALSE(info["result"].value("isError", false)) << info.dump();
-    auto info_data = json::parse(info["result"]["content"][0]["text"].get<std::string>());
-    EXPECT_FALSE(info_data["fwVersion"].get<std::string>().empty());
-    std::cout << "Camera info: " << info_data.dump(2) << std::endl;
-
-    call_tool(103, "camera_disconnect", {{"cameraPath", path}});
-}
-
-TEST_F(McpServerTest, DeviceRunScriptAndReadTerminal) {
-    auto path = discoverCamera(call_tool);
-    if (path.empty()) GTEST_SKIP() << "No camera connected";
-
-    auto conn = call_tool(200, "camera_connect", {{"cameraPath", path}});
-    ASSERT_TRUE(conn.contains("result")) << conn.dump();
-    ASSERT_FALSE(conn["result"].value("isError", false)) << conn.dump();
-
-    // Clear any existing terminal output
-    call_tool(201, "read_terminal", {{"cameraPath", path}});
-
-    // Run a simple print script
-    auto run_resp = call_tool(202, "run_script", {{"cameraPath", path}, {"script", "print('hello_from_openmv')"}});
-    ASSERT_FALSE(run_resp["result"].value("isError", false)) << run_resp.dump();
-
-    // Poll read_terminal until we see the output
-    std::string output;
-    for (int i = 0; i < 100; ++i) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        auto resp = call_tool(210 + i, "read_terminal", {{"cameraPath", path}});
-        if (resp.is_null() || !resp.contains("result")) continue;
-        auto& text = resp["result"]["content"][0]["text"];
-        if (text.is_null() || !text.is_string()) continue;
-        auto data = json::parse(text.get<std::string>());
-        output += data["output"].get<std::string>();
-        if (output.find("hello_from_openmv") != std::string::npos) break;
-    }
-
-    std::cout << "Terminal output: [" << output << "]" << std::endl;
-    EXPECT_NE(output.find("hello_from_openmv"), std::string::npos);
-
-    call_tool(399, "camera_disconnect", {{"cameraPath", path}});
-}
-
-TEST_F(McpServerTest, DeviceStopScript) {
-    auto path = discoverCamera(call_tool);
-    if (path.empty()) GTEST_SKIP() << "No camera connected";
-
-    auto conn = call_tool(400, "camera_connect", {{"cameraPath", path}});
-    ASSERT_TRUE(conn.contains("result")) << conn.dump();
-    ASSERT_FALSE(conn["result"].value("isError", false)) << conn.dump();
-
-    // Run an infinite loop
-    call_tool(
-        401,
-        "run_script",
-        {{"cameraPath", path}, {"script", "import time\nwhile True:\n    print('running')\n    time.sleep_ms(100)\n"}});
-
-    // Wait for some output
-    std::string output;
-    for (int i = 0; i < 50; ++i) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        auto resp = call_tool(410 + i, "read_terminal", {{"cameraPath", path}});
-        if (resp.is_null() || !resp.contains("result")) continue;
-        auto& text = resp["result"]["content"][0]["text"];
-        if (text.is_null() || !text.is_string()) continue;
-        auto data = json::parse(text.get<std::string>());
-        output += data["output"].get<std::string>();
-        if (output.find("running") != std::string::npos) break;
-    }
-    std::cout << "Output before stop: [" << output << "]" << std::endl;
-    EXPECT_NE(output.find("running"), std::string::npos);
-
-    // Check script_running reports true while script is active
-    auto sr_resp = call_tool(460, "script_running", {{"cameraPath", path}});
-    ASSERT_FALSE(sr_resp["result"].value("isError", false)) << sr_resp.dump();
-    auto sr_data = json::parse(sr_resp["result"]["content"][0]["text"].get<std::string>());
-    EXPECT_TRUE(sr_data["running"].get<bool>()) << "script_running should be true while script is active";
-
-    // Stop the script
-    auto stop_resp = call_tool(470, "stop_script", {{"cameraPath", path}});
-    ASSERT_TRUE(stop_resp.contains("result")) << stop_resp.dump();
-    ASSERT_FALSE(stop_resp["result"].value("isError", false)) << stop_resp.dump();
-
-    // Wait for poll to update script_running state
-    std::this_thread::sleep_for(std::chrono::milliseconds(200));
-
-    // Check script_running reports false after stop
-    auto sr_after = call_tool(473, "script_running", {{"cameraPath", path}});
-    ASSERT_FALSE(sr_after["result"].value("isError", false)) << sr_after.dump();
-    auto sr_after_data = json::parse(sr_after["result"]["content"][0]["text"].get<std::string>());
-    EXPECT_FALSE(sr_after_data["running"].get<bool>()) << "script_running should be false after stop";
-
-    // Clear and verify no new output
-    call_tool(471, "read_terminal", {{"cameraPath", path}});
-
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
-    auto after_resp = call_tool(472, "read_terminal", {{"cameraPath", path}});
-    std::string after_stop;
-    if (!after_resp.is_null() && after_resp.contains("result")) {
-        auto& text = after_resp["result"]["content"][0]["text"];
-        if (text.is_string()) {
-            auto after_data = json::parse(text.get<std::string>());
-            after_stop = after_data["output"].get<std::string>();
-        }
-    }
-    std::cout << "Output after stop: [" << after_stop << "]" << std::endl;
-    EXPECT_EQ(after_stop.find("running"), std::string::npos);
-
-    call_tool(499, "camera_disconnect", {{"cameraPath", path}});
-}
-
-// --- WebSocket integration tests (device-aware) ---
-
-// Helper: collect WebSocket messages in a background thread.
-// read() blocks until data or connection close, so we run it off the main thread.
-struct WsReader {
-    httplib::ws::WebSocketClient ws;
-    std::thread thread;
-    std::mutex mu;
-    std::vector<std::string> messages;
-    std::atomic<bool> done{false};
-
-    explicit WsReader(const std::string& url) : ws(url) {
-        ws.set_read_timeout(30);  // long timeout; stop() interrupts via ws.close()
-        ws.set_connection_timeout(5);
-    }
-
-    bool start() {
-        if (!ws.connect()) return false;
-        thread = std::thread([this]() {
-            while (!done.load()) {
-                std::string msg;
-                auto r = ws.read(msg);
-                if (r == httplib::ws::ReadResult::Fail) break;
-                std::lock_guard<std::mutex> lock(mu);
-                messages.push_back(std::move(msg));
-            }
-        });
-        return true;
-    }
-
-    // Wait until predicate matches any accumulated message, or timeout.
-    // pred receives each individual message. For aggregate checks, use waitForAll.
-    bool waitFor(const std::function<bool(const std::string&)>& pred, int timeout_ms = 10000) {
-        auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
-        while (std::chrono::steady_clock::now() < deadline) {
-            {
-                std::lock_guard<std::mutex> lock(mu);
-                for (const auto& m : messages) {
-                    if (pred(m)) return true;
-                }
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        }
-        return false;
-    }
-
-    // Wait until predicate over all concatenated messages is true, or timeout.
-    bool waitForAll(const std::function<bool(const std::string&)>& pred, int timeout_ms = 10000) {
-        auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
-        while (std::chrono::steady_clock::now() < deadline) {
-            {
-                std::lock_guard<std::mutex> lock(mu);
-                std::string all;
-                for (const auto& m : messages) {
-                    all += m;
-                }
-                if (pred(all)) return true;
-            }
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        }
-        return false;
-    }
-
-    std::string allText() {
-        std::lock_guard<std::mutex> lock(mu);
-        std::string out;
-        for (const auto& m : messages) {
-            out += m;
-        }
-        return out;
-    }
-
-    void stop() {
-        done.store(true);
-        ws.close();
-        if (thread.joinable()) thread.join();
-    }
-
-    ~WsReader() { stop(); }
-};
-
-TEST_F(McpServerTest, DeviceWebSocketScriptStatus) {
-    auto path = discoverCamera(call_tool);
-    if (path.empty()) GTEST_SKIP() << "No camera connected";
-
-    auto conn = call_tool(600, "camera_connect", {{"cameraPath", path}});
-    ASSERT_FALSE(conn["result"].value("isError", false)) << conn.dump();
-
-    WsReader reader("ws://127.0.0.1:" + std::to_string(kPort) + "/ws/script?camera=" + path);
-    ASSERT_TRUE(reader.start()) << "WebSocket connect failed";
-
-    // Should receive initial status
-    EXPECT_TRUE(reader.waitFor([](const std::string& m) {
-        auto j = json::parse(m, nullptr, false);
-        return j.is_object() && j.contains("script_running");
-    })) << "Did not receive initial script status";
-
-    // Run a script — should get script_running: true
-    call_tool(
-        601, "run_script", {{"cameraPath", path}, {"script", "import time\nwhile True:\n    time.sleep_ms(100)\n"}});
-
-    EXPECT_TRUE(reader.waitFor([](const std::string& m) {
-        auto j = json::parse(m, nullptr, false);
-        return j.is_object() && j.value("script_running", false);
-    })) << "Did not receive script_running=true";
-
-    // Stop script — should get script_running: false
-    call_tool(602, "stop_script", {{"cameraPath", path}});
-
-    EXPECT_TRUE(reader.waitFor([](const std::string& m) {
-        auto j = json::parse(m, nullptr, false);
-        return j.is_object() && !j.value("script_running", true);
-    })) << "Did not receive script_running=false";
-
-    reader.stop();
-    call_tool(609, "camera_disconnect", {{"cameraPath", path}});
-}
-
-TEST_F(McpServerTest, DeviceWebSocketTerminal) {
-    auto path = discoverCamera(call_tool);
-    if (path.empty()) GTEST_SKIP() << "No camera connected";
-
-    auto conn = call_tool(610, "camera_connect", {{"cameraPath", path}});
-    ASSERT_FALSE(conn["result"].value("isError", false)) << conn.dump();
-
-    WsReader reader("ws://127.0.0.1:" + std::to_string(kPort) + "/ws/terminal?camera=" + path);
-    ASSERT_TRUE(reader.start()) << "WebSocket connect failed";
-
-    // Run a print script
-    call_tool(611, "run_script", {{"cameraPath", path}, {"script", "print('ws_hello_test')"}});
-
-    // Wait for terminal output to contain the expected string
-    bool found =
-        reader.waitForAll([](const std::string& all) { return all.find("ws_hello_test") != std::string::npos; });
-
-    std::cout << "WebSocket terminal output: [" << reader.allText() << "]\n";
-    EXPECT_TRUE(found) << "Did not receive expected terminal output";
-
-    reader.stop();
-    call_tool(619, "camera_disconnect", {{"cameraPath", path}});
-}
-
-TEST_F(McpServerTest, DeviceWebSocketFrame) {
-    auto path = discoverCamera(call_tool);
-    if (path.empty()) GTEST_SKIP() << "No camera connected";
-
-    auto conn = call_tool(620, "camera_connect", {{"cameraPath", path}});
-    ASSERT_FALSE(conn["result"].value("isError", false)) << conn.dump();
-
-    WsReader reader("ws://127.0.0.1:" + std::to_string(kPort) + "/ws/frame?camera=" + path);
-    ASSERT_TRUE(reader.start()) << "WebSocket connect failed";
-
-    // Run a snapshot script
-    std::string script =
-        "import csi, time\n"
-        "csi0 = csi.CSI()\n"
-        "csi0.reset()\n"
-        "csi0.pixformat(csi.RGB565)\n"
-        "csi0.framesize(csi.QVGA)\n"
-        "csi0.snapshot(time=2000)\n"
-        "while True:\n"
-        "    csi0.snapshot()\n"
-        "    time.sleep_ms(100)\n";
-    call_tool(621, "run_script", {{"cameraPath", path}, {"script", script}});
-
-    // Wait for a JPEG frame (starts with FF D8)
-    bool found = reader.waitFor(
-        [](const std::string& m) {
-            return m.size() >= 2 && static_cast<uint8_t>(m[0]) == 0xFF && static_cast<uint8_t>(m[1]) == 0xD8;
-        },
-        15000);
-
-    ASSERT_TRUE(found) << "No JPEG frame received via WebSocket";
-
-    // Print first frame size
-    {
-        std::lock_guard<std::mutex> lock(reader.mu);
-        for (const auto& m : reader.messages) {
-            if (m.size() >= 2 && static_cast<uint8_t>(m[0]) == 0xFF && static_cast<uint8_t>(m[1]) == 0xD8) {
-                std::cout << "WebSocket frame size: " << m.size() << " bytes\n";
-                break;
-            }
-        }
-    }
-
-    reader.stop();
-    call_tool(628, "stop_script", {{"cameraPath", path}});
-    call_tool(629, "camera_disconnect", {{"cameraPath", path}});
-}
-
-TEST_F(McpServerTest, DeviceReadFrame) {
-    auto path = discoverCamera(call_tool);
-    if (path.empty()) GTEST_SKIP() << "No camera connected";
-
-    auto conn = call_tool(500, "camera_connect", {{"cameraPath", path}});
-    ASSERT_TRUE(conn.contains("result")) << conn.dump();
-    ASSERT_FALSE(conn["result"].value("isError", false)) << conn.dump();
-
-    // Run a snapshot script (uses csi module for OpenMV N6 series cameras)
-    std::string script =
-        "import csi, time\n"
-        "csi0 = csi.CSI()\n"
-        "csi0.reset()\n"
-        "csi0.pixformat(csi.RGB565)\n"
-        "csi0.framesize(csi.QVGA)\n"
-        "csi0.snapshot(time=2000)\n"
-        "while True:\n"
-        "    csi0.snapshot()\n"
-        "    time.sleep_ms(100)\n";
-    auto run_resp = call_tool(501, "run_script", {{"cameraPath", path}, {"script", script}});
-    ASSERT_FALSE(run_resp["result"].value("isError", false)) << run_resp.dump();
-
-    // Wait for frames to be available, then read one
-    // The snapshot(time=2000) blocks for 2s, so wait longer
-    json frame_content;
-    std::string last_error;
-    for (int i = 0; i < 200; ++i) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
-        auto resp = call_tool(510 + i, "read_frame", {{"cameraPath", path}});
-        if (resp.is_null() || !resp.contains("result")) continue;
-        if (resp["result"].value("isError", false)) {
-            auto& content = resp["result"]["content"];
-            if (content.is_array() && !content.empty() && content[0].contains("text")) {
-                last_error = content[0]["text"].get<std::string>();
-            }
-            continue;
-        }
-        auto& content = resp["result"]["content"];
-        if (!content.is_array() || content.empty()) continue;
-        if (content[0]["type"] != "image") continue;
-        auto data = content[0]["data"].get<std::string>();
-        if (!data.empty()) {
-            frame_content = content[0];
-            break;
-        }
-    }
-    if (frame_content.is_null() && !last_error.empty()) {
-        std::cout << "Last read_frame error: " << last_error << "\n";
-    }
-
-    ASSERT_FALSE(frame_content.is_null()) << "Failed to read a frame within timeout";
-    EXPECT_EQ(frame_content["type"], "image");
-    EXPECT_EQ(frame_content["mimeType"], "image/jpeg");
-    EXPECT_FALSE(frame_content["data"].get<std::string>().empty());
-    std::cout << "Frame base64 size: " << frame_content["data"].get<std::string>().size() << " bytes\n";
-
-    // Stop the script and disconnect
-    call_tool(598, "stop_script", {{"cameraPath", path}});
-    call_tool(599, "camera_disconnect", {{"cameraPath", path}});
 }

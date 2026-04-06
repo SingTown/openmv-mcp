@@ -65,6 +65,8 @@ include(GoogleTest)
 
 add_executable(openmv_mcp_server_test ${CORE_SOURCES}
     tests/mcp_server_test.cpp
+    tests/mcp_device_test.cpp
+    tests/mcp_ws_test.cpp
     tests/frame_test.cpp
     tests/base64_test.cpp
     tests/crc_test.cpp
@@ -73,7 +75,7 @@ add_executable(openmv_mcp_server_test ${CORE_SOURCES}
 )
 target_include_directories(openmv_mcp_server_test PRIVATE ${COMMON_INCLUDES})
 target_link_libraries(openmv_mcp_server_test PRIVATE ${COMMON_LIBS} GTest::gtest_main)
-gtest_discover_tests(openmv_mcp_server_test PROPERTIES TIMEOUT 60)
+gtest_discover_tests(openmv_mcp_server_test PROPERTIES TIMEOUT 60 ENVIRONMENT "GTEST_FAIL_FAST=1")
 
 # --- clang-format / clang-tidy targets ---
 file(GLOB_RECURSE ALL_SOURCES src/*.cpp src/*.h tests/*.cpp)
