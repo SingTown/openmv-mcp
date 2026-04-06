@@ -1,5 +1,6 @@
 #include "server/mcp_server.h"
 
+#include <algorithm>
 #include <iostream>
 
 namespace mcp {
@@ -183,7 +184,7 @@ json McpServer::handleInitialize(const json& id) {
 json McpServer::handleToolsList(const json& id) {
     static const json tools = [] {
         json arr = json::array();
-        for (const auto& [name, tool] : ALL_MCP_TOOLS) {
+        for (const auto* tool : ALL_MCP_TOOLS) {
             arr.push_back(
                 {{"name", tool->name}, {"description", tool->description}, {"inputSchema", tool->input_schema}});
         }
@@ -196,13 +197,14 @@ json McpServer::handleToolsCall(const json& params, const json& id) {
     auto name = params.value("name", "");
     auto args = params.value("arguments", json::object());
 
-    auto it = ALL_MCP_TOOLS.find(name);
+    auto it = std::find_if(
+        ALL_MCP_TOOLS.begin(), ALL_MCP_TOOLS.end(), [&name](const auto* tool) { return tool->name == name; });
     if (it == ALL_MCP_TOOLS.end()) {
         return makeError(id, -32602, "Unknown tool: " + name);
     }
 
     try {
-        auto resp = it->second->handler(*ctx_, args);
+        auto resp = (*it)->handler(*ctx_, args);
         return makeResponse(id, {{"content", resp.toContent()}});
     } catch (const std::exception& e) {
         McpContent err;

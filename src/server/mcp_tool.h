@@ -1,9 +1,9 @@
 #pragma once
 
 #include <functional>
-#include <map>
 #include <nlohmann/json.hpp>
 #include <string>
+#include <vector>
 
 #include "server/mcp_context.h"
 
@@ -34,6 +34,6 @@ struct McpTool {
     ToolHandler handler;
 };
 
-extern const std::map<std::string, const McpTool*> ALL_MCP_TOOLS;
+extern const std::vector<const McpTool*> ALL_MCP_TOOLS;
 
 }  // namespace mcp
