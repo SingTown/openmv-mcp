@@ -2,12 +2,15 @@
 
 #include <atomic>
 #include <cstdint>
+#include <functional>
+#include <map>
 #include <memory>
 #include <mutex>
 #include <optional>
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <vector>
 
 #include "frame.h"
 #include "serial_port/serial_port.h"
@@ -29,6 +32,12 @@ struct SystemInfo {
 
 class Camera {
  public:
+    using CallbackId = int;
+    using ConnectedCallback = std::function<void(bool connected)>;
+    using ScriptCallback = std::function<void(bool running)>;
+    using TerminalCallback = std::function<void(const std::string& text)>;
+    using FrameCallback = std::function<void(const Frame& frame)>;
+
     virtual ~Camera() = default;
 
     static std::unique_ptr<Camera> create(const std::string& path);
@@ -41,8 +50,14 @@ class Camera {
 
     [[nodiscard]] std::string readTerminal();
     [[nodiscard]] std::optional<Frame> readFrame();
-    [[nodiscard]] bool isConnected() const { return port_ && port_->isOpen(); }
+    [[nodiscard]] bool isConnected() const { return connected_.load(); }
     [[nodiscard]] bool scriptRunning() const { return script_running_.load(); }
+
+    CallbackId onConnected(ConnectedCallback cb);
+    CallbackId onScript(ScriptCallback cb);
+    CallbackId onTerminal(TerminalCallback cb);
+    CallbackId onFrame(FrameCallback cb);
+    void removeCallback(CallbackId id);
 
     SystemInfo systemInfo;
 
@@ -59,6 +74,11 @@ class Camera {
         if (!port_ || !port_->isOpen()) throw std::runtime_error("Serial connection not open");
     }
 
+    void updateConnected(bool connected);
+    void updateScript(bool running);
+    void appendTerminal(const std::vector<uint8_t>& data);
+    void setFrame(Frame frame);
+
     std::shared_ptr<SerialPort> port_;
     std::thread loop_thread_;
     std::mutex io_mutex_;
@@ -66,7 +86,20 @@ class Camera {
     std::mutex frame_mutex_;
     std::optional<Frame> frame_;
     std::atomic<bool> loop_running_{false};
+    std::atomic<bool> connected_{false};
     std::atomic<bool> script_running_{false};
+
+ private:
+    template <typename Cb>
+    CallbackId addCallback(std::map<CallbackId, Cb>& map, Cb cb);
+
+    std::mutex callback_mutex_;
+    CallbackId next_cb_id_{0};
+    std::map<CallbackId, ConnectedCallback> on_connected_cbs_;
+    std::map<CallbackId, ScriptCallback> on_script_cbs_;
+    std::map<CallbackId, TerminalCallback> on_terminal_cbs_;
+    Utf8Buffer terminal_cb_buf_;
+    std::map<CallbackId, FrameCallback> on_frame_cbs_;
 };
 
 }  // namespace mcp

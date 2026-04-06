@@ -264,7 +264,7 @@ void ProtocolV2::handleEvent(uint8_t channel_id, uint16_t event) {
                 break;
         }
     } else if (channel_id == stdin_channel_) {
-        script_running_ = (event == 1);
+        updateScript(event == 1);
     }
 }
 
@@ -408,7 +408,7 @@ void ProtocolV2::resync() {
     max_payload_ = caps_max_payload_;
     discoverChannels();
     channels_stale_ = false;
-    script_running_ = false;
+    updateScript(false);
 }
 
 void ProtocolV2::poll() {
@@ -433,14 +433,14 @@ void ProtocolV2::poll() {
     }
 
     uint32_t flags = channelPoll();
-    script_running_.store((flags & (1U << stdin_channel_)) != 0);
+    updateScript((flags & (1U << stdin_channel_)) != 0);
 
     // Read stdout terminal output
     if ((flags & (1U << stdout_channel_)) != 0) {
         uint32_t available = channelSize(stdout_channel_);
         if (available > 0) {
             auto data = channelRead(stdout_channel_, 0, available);
-            terminal_buf_.append(data);
+            appendTerminal(data);
         }
     }
 
@@ -483,8 +483,7 @@ void ProtocolV2::pollFrame() {
 
     std::vector<uint8_t> pixels(data.begin() + static_cast<ptrdiff_t>(offset), data.end());
 
-    std::lock_guard<std::mutex> flock(frame_mutex_);
-    frame_ = Frame(width, height, pixformat, std::move(pixels));
+    setFrame(Frame(width, height, pixformat, std::move(pixels)));
 }
 
 }  // namespace mcp

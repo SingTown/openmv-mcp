@@ -35,7 +35,8 @@ void Camera::disconnect() {
     stopLoopThread();
     port_.reset();
     systemInfo = {};
-    script_running_ = false;
+    updateScript(false);
+    updateConnected(false);
 }
 
 std::string Camera::readTerminal() {
@@ -47,9 +48,111 @@ std::optional<Frame> Camera::readFrame() {
     return std::exchange(frame_, std::nullopt);
 }
 
+template <typename Cb>
+Camera::CallbackId Camera::addCallback(std::map<CallbackId, Cb>& map, Cb cb) {
+    std::lock_guard<std::mutex> lock(callback_mutex_);
+    auto id = next_cb_id_++;
+    map.emplace(id, std::move(cb));
+    return id;
+}
+
+Camera::CallbackId Camera::onConnected(ConnectedCallback cb) {
+    return addCallback(on_connected_cbs_, std::move(cb));
+}
+Camera::CallbackId Camera::onScript(ScriptCallback cb) {
+    return addCallback(on_script_cbs_, std::move(cb));
+}
+Camera::CallbackId Camera::onTerminal(TerminalCallback cb) {
+    return addCallback(on_terminal_cbs_, std::move(cb));
+}
+Camera::CallbackId Camera::onFrame(FrameCallback cb) {
+    return addCallback(on_frame_cbs_, std::move(cb));
+}
+
+void Camera::removeCallback(CallbackId id) {
+    std::lock_guard<std::mutex> lock(callback_mutex_);
+    on_connected_cbs_.erase(id);
+    on_script_cbs_.erase(id);
+    on_terminal_cbs_.erase(id);
+    on_frame_cbs_.erase(id);
+}
+
+void Camera::updateConnected(bool connected) {
+    bool prev = connected_.exchange(connected);
+    if (prev != connected) {
+        std::vector<ConnectedCallback> cbs;
+        {
+            std::lock_guard<std::mutex> lock(callback_mutex_);
+            cbs.reserve(on_connected_cbs_.size());
+            for (const auto& [id, cb] : on_connected_cbs_) {
+                cbs.push_back(cb);
+            }
+        }
+        for (const auto& cb : cbs) {
+            cb(connected);
+        }
+    }
+}
+
+void Camera::updateScript(bool running) {
+    bool prev = script_running_.exchange(running);
+    if (prev != running) {
+        std::vector<ScriptCallback> cbs;
+        {
+            std::lock_guard<std::mutex> lock(callback_mutex_);
+            cbs.reserve(on_script_cbs_.size());
+            for (const auto& [id, cb] : on_script_cbs_) {
+                cbs.push_back(cb);
+            }
+        }
+        for (const auto& cb : cbs) {
+            cb(running);
+        }
+    }
+}
+
+void Camera::appendTerminal(const std::vector<uint8_t>& data) {
+    terminal_buf_.append(data);
+    std::vector<TerminalCallback> cbs;
+    std::string text;
+    {
+        std::lock_guard<std::mutex> lock(callback_mutex_);
+        if (on_terminal_cbs_.empty()) return;
+        terminal_cb_buf_.append(data);
+        text = terminal_cb_buf_.take();
+        if (text.empty()) return;
+        cbs.reserve(on_terminal_cbs_.size());
+        for (const auto& [id, cb] : on_terminal_cbs_) {
+            cbs.push_back(cb);
+        }
+    }
+    for (const auto& cb : cbs) {
+        cb(text);
+    }
+}
+
+void Camera::setFrame(Frame frame) {
+    {
+        std::lock_guard<std::mutex> lock(frame_mutex_);
+        frame_ = frame;
+    }
+    std::vector<FrameCallback> cbs;
+    {
+        std::lock_guard<std::mutex> lock(callback_mutex_);
+        cbs.reserve(on_frame_cbs_.size());
+        for (const auto& [id, cb] : on_frame_cbs_) {
+            cbs.push_back(cb);
+        }
+    }
+    for (const auto& cb : cbs) {
+        cb(frame);
+    }
+}
+
 void Camera::startLoopThread() {
     if (loop_thread_.joinable()) return;
     loop_running_ = true;
+    updateConnected(true);
     loop_thread_ = std::thread([this]() {
         int consecutive_errors = 0;
         constexpr int kMaxConsecutiveErrors = 3;

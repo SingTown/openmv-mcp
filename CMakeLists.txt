@@ -73,7 +73,7 @@ add_executable(openmv_mcp_server_test ${CORE_SOURCES}
 )
 target_include_directories(openmv_mcp_server_test PRIVATE ${COMMON_INCLUDES})
 target_link_libraries(openmv_mcp_server_test PRIVATE ${COMMON_LIBS} GTest::gtest_main)
-gtest_discover_tests(openmv_mcp_server_test)
+gtest_discover_tests(openmv_mcp_server_test PROPERTIES TIMEOUT 60)
 
 # --- clang-format / clang-tidy targets ---
 file(GLOB_RECURSE ALL_SOURCES src/*.cpp src/*.h tests/*.cpp)

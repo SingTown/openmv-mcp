@@ -21,6 +21,7 @@ class McpServer {
     void stop();
 
  private:
+    void setupWebSocket();
     json handleRequest(const json& request);
     static json handleInitialize(const json& id);
     json handleToolsList(const json& id);

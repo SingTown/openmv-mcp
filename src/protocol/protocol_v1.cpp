@@ -179,10 +179,10 @@ void ProtocolV1::poll() {
     sendCommand(V1Opcode::GET_STATE, V1State::kPayloadLen);
     V1State state(port_->read_bytes(V1State::kPayloadLen));
 
-    script_running_.store(state.scriptRunning());
+    updateScript(state.scriptRunning());
 
     if (state.hasText() && !state.textData().empty()) {
-        terminal_buf_.append(state.textData());
+        appendTerminal(state.textData());
     }
 
     if (state.hasFrame()) {
@@ -212,8 +212,7 @@ void ProtocolV1::poll() {
             delay(V1Const::FRAME_DUMP_END_DELAY);
             auto data = port_->read_bytes(size);
 
-            std::lock_guard<std::mutex> flock(frame_mutex_);
-            frame_ = Frame(w, h, pixformat, std::move(data));
+            setFrame(Frame(w, h, pixformat, std::move(data)));
         }
     }
 }

@@ -10,8 +10,111 @@ McpServer::~McpServer() {
     server_.stop();
 }
 
+void McpServer::setupWebSocket() {
+    server_.WebSocket("/ws/script", [this](const httplib::Request& req, httplib::ws::WebSocket& ws) {
+        auto camera_path = req.get_param_value("camera");
+        try {
+            auto& cam = ctx_->getCamera(camera_path);
+            auto ws_active = std::make_shared<std::atomic<bool>>(true);
+
+            json status = {{"script_running", cam.scriptRunning()}};
+            ws.send(status.dump());
+
+            auto dc_id = cam.onConnected([&ws, ws_active](bool connected) {
+                if (!ws_active->load()) return;
+                if (!connected && ws.is_open()) {
+                    ws.close();
+                }
+            });
+            auto cb_id = cam.onScript([&ws, ws_active](bool running) {
+                if (!ws_active->load()) return;
+                if (ws.is_open()) {
+                    json s = {{"script_running", running}};
+                    ws.send(s.dump());
+                }
+            });
+
+            std::string msg;
+            while (ws.read(msg) != httplib::ws::ReadResult::Fail) {
+            }
+
+            ws_active->store(false);
+            cam.removeCallback(dc_id);
+            cam.removeCallback(cb_id);
+        } catch (const std::exception& e) {
+            json err = {{"error", std::string(e.what())}};
+            ws.send(err.dump());
+        }
+    });
+
+    server_.WebSocket("/ws/terminal", [this](const httplib::Request& req, httplib::ws::WebSocket& ws) {
+        auto camera_path = req.get_param_value("camera");
+        try {
+            auto& cam = ctx_->getCamera(camera_path);
+            auto ws_active = std::make_shared<std::atomic<bool>>(true);
+
+            auto dc_id = cam.onConnected([&ws, ws_active](bool connected) {
+                if (!ws_active->load()) return;
+                if (!connected && ws.is_open()) {
+                    ws.close();
+                }
+            });
+            auto cb_id = cam.onTerminal([&ws, ws_active](const std::string& text) {
+                if (!ws_active->load()) return;
+                if (ws.is_open()) {
+                    ws.send(text);
+                }
+            });
+
+            std::string msg;
+            while (ws.read(msg) != httplib::ws::ReadResult::Fail) {
+            }
+
+            ws_active->store(false);
+            cam.removeCallback(dc_id);
+            cam.removeCallback(cb_id);
+        } catch (const std::exception& e) {
+            json err = {{"error", std::string(e.what())}};
+            ws.send(err.dump());
+        }
+    });
+
+    server_.WebSocket("/ws/frame", [this](const httplib::Request& req, httplib::ws::WebSocket& ws) {
+        auto camera_path = req.get_param_value("camera");
+        try {
+            auto& cam = ctx_->getCamera(camera_path);
+            auto ws_active = std::make_shared<std::atomic<bool>>(true);
+
+            auto dc_id = cam.onConnected([&ws, ws_active](bool connected) {
+                if (!ws_active->load()) return;
+                if (!connected && ws.is_open()) {
+                    ws.close();
+                }
+            });
+            auto cb_id = cam.onFrame([&ws, ws_active](const Frame& frame) {
+                if (!ws_active->load()) return;
+                if (ws.is_open()) {
+                    auto jpeg = frame.toJpeg();
+                    ws.send(reinterpret_cast<const char*>(jpeg.data()), jpeg.size());
+                }
+            });
+
+            std::string msg;
+            while (ws.read(msg) != httplib::ws::ReadResult::Fail) {
+            }
+
+            ws_active->store(false);
+            cam.removeCallback(dc_id);
+            cam.removeCallback(cb_id);
+        } catch (const std::exception& e) {
+            json err = {{"error", std::string(e.what())}};
+            ws.send(err.dump());
+        }
+    });
+}
+
 void McpServer::start() {
-    server_.new_task_queue = [] { return new httplib::ThreadPool(1); };
+    setupWebSocket();
 
     server_.Post("/mcp", [this](const httplib::Request& req, httplib::Response& res) {
         res.set_header("Content-Type", "application/json");

@@ -343,6 +343,196 @@ TEST_F(McpServerTest, DeviceStopScript) {
     call_tool(499, "camera_disconnect", {{"cameraPath", path}});
 }
 
+// --- WebSocket integration tests (device-aware) ---
+
+// Helper: collect WebSocket messages in a background thread.
+// read() blocks until data or connection close, so we run it off the main thread.
+struct WsReader {
+    httplib::ws::WebSocketClient ws;
+    std::thread thread;
+    std::mutex mu;
+    std::vector<std::string> messages;
+    std::atomic<bool> done{false};
+
+    explicit WsReader(const std::string& url) : ws(url) {
+        ws.set_read_timeout(30);  // long timeout; stop() interrupts via ws.close()
+        ws.set_connection_timeout(5);
+    }
+
+    bool start() {
+        if (!ws.connect()) return false;
+        thread = std::thread([this]() {
+            while (!done.load()) {
+                std::string msg;
+                auto r = ws.read(msg);
+                if (r == httplib::ws::ReadResult::Fail) break;
+                std::lock_guard<std::mutex> lock(mu);
+                messages.push_back(std::move(msg));
+            }
+        });
+        return true;
+    }
+
+    // Wait until predicate matches any accumulated message, or timeout.
+    // pred receives each individual message. For aggregate checks, use waitForAll.
+    bool waitFor(const std::function<bool(const std::string&)>& pred, int timeout_ms = 10000) {
+        auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+        while (std::chrono::steady_clock::now() < deadline) {
+            {
+                std::lock_guard<std::mutex> lock(mu);
+                for (const auto& m : messages) {
+                    if (pred(m)) return true;
+                }
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+        return false;
+    }
+
+    // Wait until predicate over all concatenated messages is true, or timeout.
+    bool waitForAll(const std::function<bool(const std::string&)>& pred, int timeout_ms = 10000) {
+        auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
+        while (std::chrono::steady_clock::now() < deadline) {
+            {
+                std::lock_guard<std::mutex> lock(mu);
+                std::string all;
+                for (const auto& m : messages) {
+                    all += m;
+                }
+                if (pred(all)) return true;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        }
+        return false;
+    }
+
+    std::string allText() {
+        std::lock_guard<std::mutex> lock(mu);
+        std::string out;
+        for (const auto& m : messages) {
+            out += m;
+        }
+        return out;
+    }
+
+    void stop() {
+        done.store(true);
+        ws.close();
+        if (thread.joinable()) thread.join();
+    }
+
+    ~WsReader() { stop(); }
+};
+
+TEST_F(McpServerTest, DeviceWebSocketScriptStatus) {
+    auto path = discoverCamera(call_tool);
+    if (path.empty()) GTEST_SKIP() << "No camera connected";
+
+    auto conn = call_tool(600, "camera_connect", {{"cameraPath", path}});
+    ASSERT_FALSE(conn["result"].value("isError", false)) << conn.dump();
+
+    WsReader reader("ws://127.0.0.1:" + std::to_string(kPort) + "/ws/script?camera=" + path);
+    ASSERT_TRUE(reader.start()) << "WebSocket connect failed";
+
+    // Should receive initial status
+    EXPECT_TRUE(reader.waitFor([](const std::string& m) {
+        auto j = json::parse(m, nullptr, false);
+        return j.is_object() && j.contains("script_running");
+    })) << "Did not receive initial script status";
+
+    // Run a script — should get script_running: true
+    call_tool(
+        601, "run_script", {{"cameraPath", path}, {"script", "import time\nwhile True:\n    time.sleep_ms(100)\n"}});
+
+    EXPECT_TRUE(reader.waitFor([](const std::string& m) {
+        auto j = json::parse(m, nullptr, false);
+        return j.is_object() && j.value("script_running", false);
+    })) << "Did not receive script_running=true";
+
+    // Stop script — should get script_running: false
+    call_tool(602, "stop_script", {{"cameraPath", path}});
+
+    EXPECT_TRUE(reader.waitFor([](const std::string& m) {
+        auto j = json::parse(m, nullptr, false);
+        return j.is_object() && !j.value("script_running", true);
+    })) << "Did not receive script_running=false";
+
+    reader.stop();
+    call_tool(609, "camera_disconnect", {{"cameraPath", path}});
+}
+
+TEST_F(McpServerTest, DeviceWebSocketTerminal) {
+    auto path = discoverCamera(call_tool);
+    if (path.empty()) GTEST_SKIP() << "No camera connected";
+
+    auto conn = call_tool(610, "camera_connect", {{"cameraPath", path}});
+    ASSERT_FALSE(conn["result"].value("isError", false)) << conn.dump();
+
+    WsReader reader("ws://127.0.0.1:" + std::to_string(kPort) + "/ws/terminal?camera=" + path);
+    ASSERT_TRUE(reader.start()) << "WebSocket connect failed";
+
+    // Run a print script
+    call_tool(611, "run_script", {{"cameraPath", path}, {"script", "print('ws_hello_test')"}});
+
+    // Wait for terminal output to contain the expected string
+    bool found =
+        reader.waitForAll([](const std::string& all) { return all.find("ws_hello_test") != std::string::npos; });
+
+    std::cout << "WebSocket terminal output: [" << reader.allText() << "]\n";
+    EXPECT_TRUE(found) << "Did not receive expected terminal output";
+
+    reader.stop();
+    call_tool(619, "camera_disconnect", {{"cameraPath", path}});
+}
+
+TEST_F(McpServerTest, DeviceWebSocketFrame) {
+    auto path = discoverCamera(call_tool);
+    if (path.empty()) GTEST_SKIP() << "No camera connected";
+
+    auto conn = call_tool(620, "camera_connect", {{"cameraPath", path}});
+    ASSERT_FALSE(conn["result"].value("isError", false)) << conn.dump();
+
+    WsReader reader("ws://127.0.0.1:" + std::to_string(kPort) + "/ws/frame?camera=" + path);
+    ASSERT_TRUE(reader.start()) << "WebSocket connect failed";
+
+    // Run a snapshot script
+    std::string script =
+        "import csi, time\n"
+        "csi0 = csi.CSI()\n"
+        "csi0.reset()\n"
+        "csi0.pixformat(csi.RGB565)\n"
+        "csi0.framesize(csi.QVGA)\n"
+        "csi0.snapshot(time=2000)\n"
+        "while True:\n"
+        "    csi0.snapshot()\n"
+        "    time.sleep_ms(100)\n";
+    call_tool(621, "run_script", {{"cameraPath", path}, {"script", script}});
+
+    // Wait for a JPEG frame (starts with FF D8)
+    bool found = reader.waitFor(
+        [](const std::string& m) {
+            return m.size() >= 2 && static_cast<uint8_t>(m[0]) == 0xFF && static_cast<uint8_t>(m[1]) == 0xD8;
+        },
+        15000);
+
+    ASSERT_TRUE(found) << "No JPEG frame received via WebSocket";
+
+    // Print first frame size
+    {
+        std::lock_guard<std::mutex> lock(reader.mu);
+        for (const auto& m : reader.messages) {
+            if (m.size() >= 2 && static_cast<uint8_t>(m[0]) == 0xFF && static_cast<uint8_t>(m[1]) == 0xD8) {
+                std::cout << "WebSocket frame size: " << m.size() << " bytes\n";
+                break;
+            }
+        }
+    }
+
+    reader.stop();
+    call_tool(628, "stop_script", {{"cameraPath", path}});
+    call_tool(629, "camera_disconnect", {{"cameraPath", path}});
+}
+
 TEST_F(McpServerTest, DeviceReadFrame) {
     auto path = discoverCamera(call_tool);
     if (path.empty()) GTEST_SKIP() << "No camera connected";
