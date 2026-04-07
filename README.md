@@ -101,6 +101,10 @@ src/
     serial_port.h/.cpp            Serial port abstraction
     serial_port_unix.cpp          macOS/Linux implementation
     serial_port_win.cpp           Windows implementation
+  subprocess/
+    subprocess.h/.cpp             Process execution abstraction
+    subprocess_unix.cpp           macOS/Linux implementation
+    subprocess_win.cpp            Windows implementation
   camera_list/
     camera_list.h                 Camera discovery interface
     camera_list_darwin.cpp        macOS (IOKit)
@@ -120,6 +124,7 @@ tests/
   crc_test.cpp                    CRC tests
   ring_buffer_test.cpp            Ring buffer tests
   utf8_buffer_test.cpp            UTF-8 buffer tests
+  subprocess_test.cpp             Subprocess tests
 3rdparty/
   httplib/                        cpp-httplib (git submodule)
   nlohmann-json/                  nlohmann/json (git submodule)

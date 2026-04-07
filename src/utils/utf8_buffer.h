@@ -17,18 +17,15 @@ class Utf8Buffer {
  public:
     explicit Utf8Buffer(size_t max_size = kDefaultMaxSize) : max_size_(max_size) {}
 
-    void append(const std::vector<uint8_t>& data) {
+    void append(const std::string& data) { append(data.data(), data.size()); }
+
+    void append(const char* data, size_t len) {
         std::lock_guard<std::mutex> lock(mutex_);
-        buf_.append(reinterpret_cast<const char*>(data.data()), data.size());
-        if (buf_.size() > max_size_) {
-            // Trim excess bytes + any orphaned continuation bytes in one pass
-            size_t trim = buf_.size() - max_size_;
-            while (trim < buf_.size() && (static_cast<uint8_t>(buf_[trim]) & 0xC0) == 0x80) {
-                ++trim;
-            }
-            buf_.erase(0, trim);
-        }
+        buf_.append(data, len);
+        trim();
     }
+
+    void append(const std::vector<uint8_t>& data) { append(reinterpret_cast<const char*>(data.data()), data.size()); }
 
     std::string take() {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -77,6 +74,16 @@ class Utf8Buffer {
         size_t expected = charLen(static_cast<uint8_t>(data[lead]));
         size_t actual = len - lead;
         return (actual >= expected) ? len : lead;
+    }
+
+    void trim() {
+        if (buf_.size() > max_size_) {
+            size_t drop = buf_.size() - max_size_;
+            while (drop < buf_.size() && (static_cast<uint8_t>(buf_[drop]) & 0xC0) == 0x80) {
+                ++drop;
+            }
+            buf_.erase(0, drop);
+        }
     }
 
     static size_t charLen(uint8_t lead) {

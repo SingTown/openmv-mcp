@@ -16,20 +16,24 @@ set(CORE_SOURCES
     src/protocol/protocol_v1.cpp
     src/protocol/protocol_v2.cpp
     src/serial_port/serial_port.cpp
+    src/subprocess/subprocess.cpp
 )
 
 if(APPLE)
     list(APPEND CORE_SOURCES
         src/camera_list/camera_list_darwin.cpp
-        src/serial_port/serial_port_unix.cpp)
+        src/serial_port/serial_port_unix.cpp
+        src/subprocess/subprocess_unix.cpp)
 elseif(UNIX)
     list(APPEND CORE_SOURCES
         src/camera_list/camera_list_linux.cpp
-        src/serial_port/serial_port_unix.cpp)
+        src/serial_port/serial_port_unix.cpp
+        src/subprocess/subprocess_unix.cpp)
 elseif(WIN32)
     list(APPEND CORE_SOURCES
         src/camera_list/camera_list_win.cpp
-        src/serial_port/serial_port_win.cpp)
+        src/serial_port/serial_port_win.cpp
+        src/subprocess/subprocess_win.cpp)
 endif()
 
 # Common include dirs
@@ -72,6 +76,7 @@ add_executable(openmv_mcp_server_test ${CORE_SOURCES}
     tests/crc_test.cpp
     tests/ring_buffer_test.cpp
     tests/utf8_buffer_test.cpp
+    tests/subprocess_test.cpp
 )
 target_include_directories(openmv_mcp_server_test PRIVATE ${COMMON_INCLUDES})
 target_link_libraries(openmv_mcp_server_test PRIVATE ${COMMON_LIBS} GTest::gtest_main)
