@@ -92,7 +92,7 @@ src/
   server/
     mcp_server.h/.cpp             HTTP/WebSocket server, JSON-RPC dispatch
     mcp_tool.h/.cpp               Tool definitions and call dispatch
-    mcp_context.h                 Camera instance management
+    mcp_context.h                 Camera instance management, streaming support
   protocol/
     protocol_detect.h/.cpp        Protocol version detection
     protocol_v1.h/.cpp            OpenMV Protocol v1 (opcode-based)

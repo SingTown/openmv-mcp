@@ -55,7 +55,7 @@ This is an MCP (Model Context Protocol) server for controlling OpenMV cameras. I
 
 - **MCP Server**: `src/server/mcp_server.h/.cpp` — HTTP routing, JSON-RPC dispatch, WebSocket endpoints
 - **MCP Tool**: `src/server/mcp_tool.h/.cpp` — tool definitions (`ALL_MCP_TOOLS` vector) and tool call dispatch
-- **MCP Context**: `src/server/mcp_context.h` — camera instance management
+- **MCP Context**: `src/server/mcp_context.h` — camera instance management, streaming message support
 - **Camera**: `src/camera.h/.cpp` — abstract camera class with factory pattern (`Camera::create()`) and callback system (connected/script/terminal/frame)
 - **Frame**: `src/frame.h/.cpp` — frame data with pixel format conversion, JPEG encoding via stb
 - **Protocol**: `src/protocol/` — OpenMV protocol v1 (opcode-based) and v2 (packet-based with CRC)
@@ -67,7 +67,7 @@ This is an MCP (Model Context Protocol) server for controlling OpenMV cameras. I
 
 ### Request Flow
 
-`POST /mcp` → `handleRequest()` → method handler (`handleInitialize`, `handleToolsList`, `handleToolsCall`) → tool dispatch via `McpTool::call()`
+`POST /mcp` → `handleRequest()` → method handler (`handleInitialize`, `handleToolsList`, `handleToolsCall`) → tool dispatch via `tool->handler()`. Streaming tools bypass `handleToolsCall()` and are handled directly in the `/mcp` route with Streamable HTTP chunked response.
 
 C++17, header-only third-party libs (`cpp-httplib`, `nlohmann/json`, `stb`) managed as git submodules in `3rdparty/`. Google Test fetched at build time via CMake FetchContent.
 

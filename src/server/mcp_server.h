@@ -26,6 +26,7 @@ class McpServer {
     static json handleInitialize(const json& id);
     json handleToolsList(const json& id);
     json handleToolsCall(const json& params, const json& id);
+    static const McpTool* findTool(const std::string& name);
     static json makeResponse(const json& id, const json& result);
     static json makeError(const json& id, int code, const std::string& message);
 

@@ -2,6 +2,8 @@
 
 #include <map>
 #include <memory>
+#include <nlohmann/json.hpp>
+#include <ostream>
 #include <stdexcept>
 #include <string>
 
@@ -9,8 +11,16 @@
 
 namespace mcp {
 
+using json = nlohmann::json;
+
+inline void writeStreamEvent(std::ostream& os, const json& data) {
+    os << "event: message\ndata: " << data.dump() << "\n\n" << std::flush;
+}
+
 class McpContext {
  public:
+    std::ostream* stream = nullptr;
+
     McpContext() = default;
     ~McpContext() {
         for (auto& [path, cam] : cameras_) {
@@ -45,6 +55,15 @@ class McpContext {
         }
         it->second->disconnect();
         cameras_.erase(it);
+    }
+
+    void streamMessage(const std::string& message, const std::string& level = "info") {
+        if (stream != nullptr) {
+            writeStreamEvent(*stream,
+                             json({{"jsonrpc", "2.0"},
+                                   {"method", "notifications/message"},
+                                   {"params", {{"level", level}, {"data", message}}}}));
+        }
     }
 
  private:

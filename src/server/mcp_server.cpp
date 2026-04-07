@@ -118,9 +118,40 @@ void McpServer::start() {
     setupWebSocket();
 
     server_.Post("/mcp", [this](const httplib::Request& req, httplib::Response& res) {
-        res.set_header("Content-Type", "application/json");
         try {
             auto request = json::parse(req.body);
+            auto method = request.value("method", "");
+
+            if (method == "tools/call") {
+                auto params = request.value("params", json::object());
+                auto name = params.value("name", "");
+                const auto* tool = findTool(name);
+
+                if (tool != nullptr && tool->streaming) {
+                    auto id = request.value("id", json(nullptr));
+                    auto args = params.value("arguments", json::object());
+                    auto provider = [this, tool, id = std::move(id), args = std::move(args)](size_t,
+                                                                                             httplib::DataSink& sink) {
+                        ctx_->stream = &sink.os;
+                        try {
+                            auto resp = tool->handler(*ctx_, args);
+                            writeStreamEvent(sink.os, makeResponse(id, {{"content", resp.toContent()}}));
+                        } catch (const std::exception& e) {
+                            McpContent err;
+                            err.addText(json({{"error", std::string(e.what())}}));
+                            writeStreamEvent(sink.os,
+                                             makeResponse(id, {{"content", err.toContent()}, {"isError", true}}));
+                        }
+                        ctx_->stream = nullptr;
+                        sink.done();
+                        return true;
+                    };
+                    res.set_chunked_content_provider("text/event-stream", std::move(provider));
+                    return;
+                }
+            }
+
+            res.set_header("Content-Type", "application/json");
             auto response = handleRequest(request);
             if (response.is_null()) {
                 res.status = 202;
@@ -128,6 +159,7 @@ void McpServer::start() {
             }
             res.set_content(response.dump(), "application/json");
         } catch (const json::parse_error& e) {
+            res.set_header("Content-Type", "application/json");
             auto err = makeError(nullptr, -32700, std::string("Parse error: ") + e.what());
             res.set_content(err.dump(), "application/json");
         }
@@ -193,18 +225,26 @@ json McpServer::handleToolsList(const json& id) {
     return makeResponse(id, {{"tools", tools}});
 }
 
+const McpTool* McpServer::findTool(const std::string& name) {
+    auto it = std::find_if(
+        ALL_MCP_TOOLS.begin(), ALL_MCP_TOOLS.end(), [&name](const auto* tool) { return tool->name == name; });
+    if (it == ALL_MCP_TOOLS.end()) {
+        return nullptr;
+    }
+    return *it;
+}
+
 json McpServer::handleToolsCall(const json& params, const json& id) {
     auto name = params.value("name", "");
     auto args = params.value("arguments", json::object());
 
-    auto it = std::find_if(
-        ALL_MCP_TOOLS.begin(), ALL_MCP_TOOLS.end(), [&name](const auto* tool) { return tool->name == name; });
-    if (it == ALL_MCP_TOOLS.end()) {
+    const auto* tool = findTool(name);
+    if (tool == nullptr) {
         return makeError(id, -32602, "Unknown tool: " + name);
     }
 
     try {
-        auto resp = (*it)->handler(*ctx_, args);
+        auto resp = tool->handler(*ctx_, args);
         return makeResponse(id, {{"content", resp.toContent()}});
     } catch (const std::exception& e) {
         McpContent err;
