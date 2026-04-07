@@ -44,6 +44,8 @@ class Camera {
 
     virtual void disconnect();
 
+    virtual void reset() = 0;
+    virtual void boot() = 0;
     virtual void execScript(const std::string& script) = 0;
     virtual void stopScript() = 0;
     virtual void enableFrame(bool enable) = 0;

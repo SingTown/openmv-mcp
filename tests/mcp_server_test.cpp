@@ -67,7 +67,7 @@ TEST_F(McpServerTest, ToolsList) {
     ASSERT_TRUE(resp.contains("result"));
     auto& tools = resp["result"]["tools"];
     ASSERT_TRUE(tools.is_array());
-    EXPECT_EQ(tools.size(), 9U);
+    EXPECT_EQ(tools.size(), 10U);
 
     std::set<std::string> names;
     for (const auto& t : tools) names.insert(t["name"].get<std::string>());
@@ -75,6 +75,7 @@ TEST_F(McpServerTest, ToolsList) {
     EXPECT_TRUE(names.count("camera_connect"));
     EXPECT_TRUE(names.count("camera_disconnect"));
     EXPECT_TRUE(names.count("camera_info"));
+    EXPECT_TRUE(names.count("camera_reset"));
     EXPECT_TRUE(names.count("run_script"));
     EXPECT_TRUE(names.count("stop_script"));
     EXPECT_TRUE(names.count("read_terminal"));
@@ -130,6 +131,12 @@ TEST_F(McpServerTest, ScriptRunningNotConnected) {
 
 TEST_F(McpServerTest, ReadFrameNotConnected) {
     auto resp = call_tool("read_frame", {{"cameraPath", "/dev/cu.nonexistent"}});
+    ASSERT_TRUE(resp.contains("result"));
+    EXPECT_TRUE(resp["result"].value("isError", false));
+}
+
+TEST_F(McpServerTest, CameraResetNotConnected) {
+    auto resp = call_tool("camera_reset", {{"cameraPath", "/dev/cu.nonexistent"}});
     ASSERT_TRUE(resp.contains("result"));
     EXPECT_TRUE(resp["result"].value("isError", false));
 }

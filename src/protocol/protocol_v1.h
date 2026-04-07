@@ -57,6 +57,8 @@ class ProtocolV1 : public Camera {
  public:
     ~ProtocolV1() override { disconnect(); }
     void connect(std::shared_ptr<SerialPort> port) override;
+    void reset() override;
+    void boot() override;
     void execScript(const std::string& script) override;
     void stopScript() override;
     void enableFrame(bool enable) override;

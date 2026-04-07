@@ -20,6 +20,8 @@ constexpr uint8_t SCRIPT_STOP = 0x06;
 constexpr uint8_t FW_VERSION = 0x80;
 constexpr uint8_t ARCH_STR = 0x83;
 constexpr uint8_t SENSOR_ID = 0x90;
+constexpr uint8_t SYS_RESET = 0x0C;
+constexpr uint8_t SYS_RESET_TO_BL = 0x0E;
 constexpr uint8_t FB_ENABLE = 0x0D;
 constexpr uint8_t GET_STATE = 0x93;
 constexpr uint8_t FRAME_DUMP = 0x82;
@@ -28,6 +30,8 @@ constexpr uint8_t FRAME_DUMP = 0x82;
 namespace V1Const {
 constexpr uint32_t TABOO_PACKET_SIZE = 64;
 // Per-command delays matching OpenMV IDE (openmvpluginserialport.h)
+constexpr int SYS_RESET_START_DELAY = 50;
+constexpr int SYS_RESET_END_DELAY = 100;
 constexpr int SCRIPT_EXEC_START_DELAY = 50;
 constexpr int SCRIPT_EXEC_END_DELAY = 25;
 constexpr int SCRIPT_EXEC_2_START_DELAY = 25;
@@ -87,6 +91,32 @@ void ProtocolV1::connect(std::shared_ptr<SerialPort> port) {
         disconnect();
         throw;
     }
+}
+
+void ProtocolV1::reset() {
+    requireOpen();
+
+    // Stop loop thread first so it won't poll a resetting device
+    stopLoopThread();
+
+    delay(V1Const::SYS_RESET_START_DELAY);
+    sendCommand(V1Opcode::SYS_RESET, 0);
+    delay(V1Const::SYS_RESET_END_DELAY);
+
+    disconnect();
+}
+
+void ProtocolV1::boot() {
+    requireOpen();
+
+    // Stop loop thread first so it won't poll a rebooting device
+    stopLoopThread();
+
+    delay(V1Const::SYS_RESET_START_DELAY);
+    sendCommand(V1Opcode::SYS_RESET_TO_BL, 0);
+    delay(V1Const::SYS_RESET_END_DELAY);
+
+    disconnect();
 }
 
 void ProtocolV1::readFwVersion() {

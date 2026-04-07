@@ -248,6 +248,22 @@ void ProtocolV2::disconnect() {
     resync_pending_ = false;
 }
 
+void ProtocolV2::reset() {
+    requireOpen();
+
+    stopLoopThread();
+    sendPacket({sequence_, 0, 0, Opcode::SYS_RESET, 0, {}});
+    disconnect();
+}
+
+void ProtocolV2::boot() {
+    requireOpen();
+
+    stopLoopThread();
+    sendPacket({sequence_, 0, 0, Opcode::SYS_BOOT, 0, {}});
+    disconnect();
+}
+
 void ProtocolV2::handleEvent(uint8_t channel_id, uint16_t event) {
     if (channel_id == 0) {
         // System events

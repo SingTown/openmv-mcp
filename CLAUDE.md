@@ -61,6 +61,7 @@ This is an MCP (Model Context Protocol) server for controlling OpenMV cameras. I
 - **Protocol**: `src/protocol/` — OpenMV protocol v1 (opcode-based) and v2 (packet-based with CRC)
 - **Serial Port**: `src/serial_port/` — cross-platform serial I/O (macOS/Linux/Windows)
 - **Camera List**: `src/camera_list/` — platform-specific USB camera discovery
+- **Board**: `src/board.h/.cpp` — board/sensor database and USB device lookup
 - **Utilities**: `src/utils/` — base64, CRC, ring buffer, UTF-8 buffer
 
 ### Request Flow

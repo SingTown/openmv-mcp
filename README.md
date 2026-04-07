@@ -63,6 +63,7 @@ npx @modelcontextprotocol/inspector --config mcp-inspector.json
 | `list_cameras` | List all connected OpenMV cameras |
 | `camera_connect` | Connect to a camera by serial port path |
 | `camera_disconnect` | Disconnect from a camera |
+| `camera_reset` | Reset (reboot) the camera |
 | `camera_info` | Get camera board/sensor/firmware info |
 | `run_script` | Execute MicroPython script on camera |
 | `stop_script` | Stop currently running script |
