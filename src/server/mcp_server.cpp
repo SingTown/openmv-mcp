@@ -132,9 +132,11 @@ void McpServer::start() {
                     auto args = params.value("arguments", json::object());
                     auto provider = [this, tool, id = std::move(id), args = std::move(args)](size_t,
                                                                                              httplib::DataSink& sink) {
+                        auto requestId = id.dump();
+                        auto cancelled = ctx_->registerCancellation(requestId);
                         ctx_->stream = &sink.os;
                         try {
-                            auto resp = tool->handler(*ctx_, args);
+                            auto resp = tool->handler(*ctx_, args, *cancelled);
                             writeStreamEvent(sink.os, makeResponse(id, {{"content", resp.toContent()}}));
                         } catch (const std::exception& e) {
                             McpContent err;
@@ -143,6 +145,7 @@ void McpServer::start() {
                                              makeResponse(id, {{"content", err.toContent()}, {"isError", true}}));
                         }
                         ctx_->stream = nullptr;
+                        ctx_->unregisterCancellation(requestId);
                         sink.done();
                         return true;
                     };
@@ -191,6 +194,13 @@ json McpServer::handleRequest(const json& request) {
         return handleInitialize(id);
     }
     if (method == "notifications/initialized") {
+        return json(nullptr);
+    }
+    if (method == "notifications/cancelled") {
+        auto requestId = params.value("requestId", json(nullptr));
+        if (!requestId.is_null()) {
+            ctx_->cancel(requestId.dump());
+        }
         return json(nullptr);
     }
     if (method == "tools/list") {
@@ -244,7 +254,8 @@ json McpServer::handleToolsCall(const json& params, const json& id) {
     }
 
     try {
-        auto resp = tool->handler(*ctx_, args);
+        std::atomic<bool> no_cancel{false};
+        auto resp = tool->handler(*ctx_, args, no_cancel);
         return makeResponse(id, {{"content", resp.toContent()}});
     } catch (const std::exception& e) {
         McpContent err;

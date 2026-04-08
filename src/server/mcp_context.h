@@ -1,11 +1,14 @@
 #pragma once
 
+#include <atomic>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <nlohmann/json.hpp>
 #include <ostream>
 #include <stdexcept>
 #include <string>
+#include <unordered_map>
 
 #include "camera.h"
 
@@ -66,8 +69,30 @@ class McpContext {
         }
     }
 
+    std::shared_ptr<std::atomic<bool>> registerCancellation(const std::string& key) {
+        auto flag = std::make_shared<std::atomic<bool>>(false);
+        std::lock_guard lock(cancellation_mutex_);
+        cancellations_[key] = flag;
+        return flag;
+    }
+
+    void unregisterCancellation(const std::string& key) {
+        std::lock_guard lock(cancellation_mutex_);
+        cancellations_.erase(key);
+    }
+
+    void cancel(const std::string& key) {
+        std::lock_guard lock(cancellation_mutex_);
+        auto it = cancellations_.find(key);
+        if (it != cancellations_.end()) {
+            it->second->store(true);
+        }
+    }
+
  private:
     std::map<std::string, std::unique_ptr<Camera>> cameras_;
+    std::mutex cancellation_mutex_;
+    std::unordered_map<std::string, std::shared_ptr<std::atomic<bool>>> cancellations_;
 };
 
 }  // namespace mcp

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <atomic>
 #include <functional>
 #include <nlohmann/json.hpp>
 #include <string>
@@ -23,7 +24,7 @@ class McpContent {
     json content_ = json::array();
 };
 
-using ToolHandler = std::function<McpContent(McpContext&, const json&)>;
+using ToolHandler = std::function<McpContent(McpContext&, const json&, const std::atomic<bool>& cancelled)>;
 
 struct McpTool {
     std::string name;

@@ -1,5 +1,7 @@
 #include "server/mcp_tool.h"
 
+#include <atomic>
+
 #include "board.h"
 #include "camera.h"
 #include "camera_list/camera_list.h"
@@ -16,7 +18,7 @@ static const McpTool TOOL_LIST_CAMERAS = {
     "list_cameras",
     "List connected OpenMV cameras",
     {{"type", "object"}, {"properties", json::object()}, {"required", json::array()}},
-    [](McpContext& /*ctx*/, const json& /*args*/) {
+    [](McpContext& /*ctx*/, const json& /*args*/, const std::atomic<bool>& /*cancelled*/) {
         auto cams = listCameras();
         json result = json::array();
         for (const auto& cam : cams) {
@@ -32,7 +34,7 @@ static const McpTool TOOL_CAMERA_CONNECT = {
     "camera_connect",
     "Connect to an OpenMV camera by its serial port path",
     CAMERA_PATH_SCHEMA,
-    [](McpContext& ctx, const json& args) {
+    [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
         auto cameraPath = args.at("cameraPath").get<std::string>();
         auto camera = Camera::create(cameraPath);
         ctx.addCamera(cameraPath, std::move(camera));
@@ -46,7 +48,7 @@ static const McpTool TOOL_CAMERA_DISCONNECT = {
     "camera_disconnect",
     "Disconnect from a connected camera",
     CAMERA_PATH_SCHEMA,
-    [](McpContext& ctx, const json& args) {
+    [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
         auto cameraPath = args.at("cameraPath").get<std::string>();
         ctx.removeCamera(cameraPath);
         McpContent resp;
@@ -59,7 +61,7 @@ static const McpTool TOOL_CAMERA_INFO = {
     "camera_info",
     "Get detailed information about a connected camera",
     CAMERA_PATH_SCHEMA,
-    [](McpContext& ctx, const json& args) {
+    [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
         auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
         const auto& si = cam.systemInfo;
 
@@ -124,7 +126,7 @@ static const McpTool TOOL_RUN_SCRIPT = {
           "while True:\n    clock.tick()\n    img = csi0.snapshot()\n"
           "    print(clock.fps())"}}}}},
      {"required", json::array({"cameraPath", "script"})}},
-    [](McpContext& ctx, const json& args) {
+    [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
         auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
         cam.execScript(args.at("script").get<std::string>());
         McpContent resp;
@@ -137,7 +139,7 @@ static const McpTool TOOL_STOP_SCRIPT = {
     "stop_script",
     "Stop the currently running script on the camera",
     CAMERA_PATH_SCHEMA,
-    [](McpContext& ctx, const json& args) {
+    [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
         auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
         cam.stopScript();
         McpContent resp;
@@ -150,7 +152,7 @@ static const McpTool TOOL_READ_TERMINAL = {
     "read_terminal",
     "Read available terminal output (stdout/stderr) from the camera",
     CAMERA_PATH_SCHEMA,
-    [](McpContext& ctx, const json& args) {
+    [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
         auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
         McpContent resp;
         resp.addText(json({{"output", cam.readTerminal()}}));
@@ -162,7 +164,7 @@ static const McpTool TOOL_SCRIPT_RUNNING = {
     "script_running",
     "Check if a script is currently running on the camera (updated by device events)",
     CAMERA_PATH_SCHEMA,
-    [](McpContext& ctx, const json& args) {
+    [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
         auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
         McpContent resp;
         resp.addText(json({{"running", cam.scriptRunning()}}));
@@ -174,7 +176,7 @@ static const McpTool TOOL_CAMERA_RESET = {
     "camera_reset",
     "Reset (reboot) the camera",
     CAMERA_PATH_SCHEMA,
-    [](McpContext& ctx, const json& args) {
+    [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
         auto cameraPath = args.at("cameraPath").get<std::string>();
         auto& cam = ctx.getCamera(cameraPath);
         cam.reset();
@@ -190,7 +192,7 @@ static const McpTool TOOL_READ_FRAME = {
     "Capture a single frame from the camera's frame buffer. A script that captures frames must be "
     "running. Returns the image as base64-encoded JPEG.",
     CAMERA_PATH_SCHEMA,
-    [](McpContext& ctx, const json& args) {
+    [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
         auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
         auto frame = cam.readFrame();
         if (!frame) {
