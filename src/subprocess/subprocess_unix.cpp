@@ -14,7 +14,7 @@
 
 namespace mcp {
 
-Subprocess::Subprocess(const std::vector<std::string>& commands, const std::string& cwd) {
+Subprocess::Subprocess(const std::vector<std::string>& commands, const std::filesystem::path& cwd) {
     if (commands.empty()) {
         finished_ = true;
         exit_code_ = 0;

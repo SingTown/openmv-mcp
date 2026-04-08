@@ -1,6 +1,7 @@
 #pragma once
 
 #include <atomic>
+#include <filesystem>
 #include <string>
 #include <thread>
 #include <vector>
@@ -15,7 +16,7 @@ namespace mcp {
 
 class Subprocess {
  public:
-    Subprocess(const std::vector<std::string>& commands, const std::string& cwd = ".");
+    Subprocess(const std::vector<std::string>& commands, const std::filesystem::path& cwd = ".");
     ~Subprocess();
     Subprocess(const Subprocess&) = delete;
     Subprocess& operator=(const Subprocess&) = delete;

@@ -6,7 +6,7 @@
 
 namespace mcp {
 
-Subprocess::Subprocess(const std::vector<std::string>& /*commands*/, const std::string& /*cwd*/) {
+Subprocess::Subprocess(const std::vector<std::string>& /*commands*/, const std::filesystem::path& /*cwd*/) {
     std::string err = "Subprocess not implemented on Windows";
     output_buf_.append(err);
     finished_ = true;
