@@ -30,26 +30,9 @@ cmake --build build --target format   # auto-format with clang-format
 cmake --build build --target check    # check formatting (CI)
 ```
 
-## Debug with MCP Inspector
-
-```bash
-npx @modelcontextprotocol/inspector --config mcp-inspector.json
-```
-
 ## Architecture
 
 This is an MCP (Model Context Protocol) server for controlling OpenMV cameras. It uses **Streamable HTTP** transport (not stdio) over JSON-RPC 2.0.
-
-### HTTP Endpoints
-
-- `POST /mcp` — JSON-RPC 2.0 endpoint (MCP protocol version `2025-03-26`)
-- `GET /health` — health check, returns `{"status": "ok"}`
-
-### WebSocket Endpoints (real-time push)
-
-- `GET /ws/script?camera=<path>` — script running status stream (JSON)
-- `GET /ws/terminal?camera=<path>` — terminal output stream (text)
-- `GET /ws/frame?camera=<path>` — frame buffer stream (binary JPEG)
 
 ### Core Modules
 
@@ -64,16 +47,3 @@ This is an MCP (Model Context Protocol) server for controlling OpenMV cameras. I
 - **Camera List**: `src/camera_list/` — platform-specific USB camera discovery
 - **Board**: `src/board.h/.cpp` — board/sensor database and USB device lookup
 - **Utilities**: `src/utils/` — base64, CRC, ring buffer, UTF-8 buffer
-
-### Request Flow
-
-`POST /mcp` → `handleRequest()` → method handler (`handleInitialize`, `handleToolsList`, `handleToolsCall`) → tool dispatch via `tool->handler()`. Streaming tools bypass `handleToolsCall()` and are handled directly in the `/mcp` route with Streamable HTTP chunked response.
-
-C++17, header-only third-party libs (`cpp-httplib`, `nlohmann/json`, `stb`) managed as git submodules in `3rdparty/`. Google Test fetched at build time via CMake FetchContent.
-
-## Conventions
-
-- Always respond in Chinese (简体中文)
-- Code style enforced by `.clang-format` and `.clang-tidy`
-- All source lives under `src/`, tests under `tests/`
-- Namespace: `mcp`
