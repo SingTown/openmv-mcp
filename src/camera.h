@@ -27,7 +27,7 @@ struct SystemInfo {
     uint16_t pid = 0;
     uint32_t protocol_version = 0;
     std::string board_type;
-    std::string display_name;
+    std::string board_name;
 };
 
 class Camera {

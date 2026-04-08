@@ -12,7 +12,7 @@ struct Board {
     uint16_t pid;
     uint16_t pidMask;
     std::string boardType;
-    std::string displayName;
+    std::string name;
     std::string archString;
 };
 

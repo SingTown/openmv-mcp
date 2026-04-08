@@ -22,7 +22,7 @@ static const McpTool TOOL_LIST_CAMERAS = {
         auto cams = listCameras();
         json result = json::array();
         for (const auto& cam : cams) {
-            result.push_back({{"path", cam.path}, {"displayName", cam.displayName}});
+            result.push_back({{"path", cam.path}, {"name", cam.name}});
         }
         McpContent resp;
         resp.addText(result);
@@ -69,15 +69,15 @@ static const McpTool TOOL_CAMERA_INFO = {
         std::snprintf(id_buf, sizeof(id_buf), "%08X%08X%08X", si.device_id[0], si.device_id[1], si.device_id[2]);
 
         std::string board_type = si.board_type;
-        std::string display_name = si.display_name;
-        if (board_type.empty() || display_name.empty()) {
+        std::string board_name = si.board_name;
+        if (board_type.empty() || board_name.empty()) {
             const auto* b = findBoard(si.vid, si.pid);
             if (b != nullptr) {
                 if (board_type.empty()) {
                     board_type = b->boardType;
                 }
-                if (display_name.empty()) {
-                    display_name = b->displayName;
+                if (board_name.empty()) {
+                    board_name = b->name;
                 }
             }
         }
@@ -102,7 +102,7 @@ static const McpTool TOOL_CAMERA_INFO = {
         McpContent resp;
         resp.addText(json({{"boardId", id_buf},
                            {"boardType", board_type},
-                           {"displayName", display_name},
+                           {"name", board_name},
                            {"sensor", sensor},
                            {"fwVersion", fw_buf},
                            {"protocolVersion", si.protocol_version}}));

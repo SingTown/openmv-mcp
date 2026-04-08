@@ -140,7 +140,7 @@ void ProtocolV1::readArchStr() {
         while (!archPrefix.empty() && archPrefix.back() == ' ') archPrefix.pop_back();
         for (const auto& b : ALL_BOARDS) {
             if (b.archString == archPrefix) {
-                systemInfo.display_name = b.displayName;
+                systemInfo.board_name = b.name;
                 break;
             }
         }

@@ -111,7 +111,7 @@ std::vector<PortInfo> listCameras() {
 
         const auto* b = findBoard(vid, pid);
         if (b) {
-            result.push_back({std::move(path), b->displayName});
+            result.push_back({std::move(path), b->name});
         }
     }
 
