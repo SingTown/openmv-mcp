@@ -1,9 +1,13 @@
 cmake_minimum_required(VERSION 3.15)
 project(openmv_mcp_server CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(MSVC)
+    add_compile_options(/utf-8)
+endif()
 
 # Core sources (shared between server and test)
 set(CORE_SOURCES
@@ -69,18 +73,31 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 include(GoogleTest)
 
-add_executable(openmv_mcp_server_test ${CORE_SOURCES}
-    tests/mcp_server_test.cpp
-    tests/mcp_device_test.cpp
-    tests/mcp_firmware_test.cpp
-    tests/mcp_ws_test.cpp
-    tests/frame_test.cpp
-    tests/base64_test.cpp
-    tests/crc_test.cpp
-    tests/ring_buffer_test.cpp
-    tests/utf8_buffer_test.cpp
-    tests/subprocess_test.cpp
-)
+if(WIN32)
+    set(TEST_SOURCES
+        tests/mcp_server_test.cpp
+        tests/frame_test.cpp
+        tests/base64_test.cpp
+        tests/crc_test.cpp
+        tests/ring_buffer_test.cpp
+        tests/utf8_buffer_test.cpp
+    )
+else()
+    set(TEST_SOURCES
+        tests/mcp_server_test.cpp
+        tests/mcp_device_test.cpp
+        tests/mcp_firmware_test.cpp
+        tests/mcp_ws_test.cpp
+        tests/frame_test.cpp
+        tests/base64_test.cpp
+        tests/crc_test.cpp
+        tests/ring_buffer_test.cpp
+        tests/utf8_buffer_test.cpp
+        tests/subprocess_test.cpp
+    )
+endif()
+
+add_executable(openmv_mcp_server_test ${CORE_SOURCES} ${TEST_SOURCES})
 target_include_directories(openmv_mcp_server_test PRIVATE ${COMMON_INCLUDES})
 target_link_libraries(openmv_mcp_server_test PRIVATE ${COMMON_LIBS} GTest::gtest_main)
 gtest_discover_tests(openmv_mcp_server_test WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTIES TIMEOUT 300 ENVIRONMENT "GTEST_FAIL_FAST=1")

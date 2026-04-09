@@ -1,4 +1,6 @@
 .DS_Store
-build
 .cache
 .claude/settings.local.json
+.vscode
+build
+cmake_test_discovery_*.json

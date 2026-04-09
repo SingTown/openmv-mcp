@@ -2,6 +2,29 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Install Dependencies
+
+### macOS
+
+```bash
+brew install cmake llvm
+export PATH="$(brew --prefix llvm)/bin:$PATH"  # add to ~/.zshrc for clang-tidy/clang-format
+```
+
+### Ubuntu / Debian
+
+```bash
+sudo apt install cmake clang-tidy clang-format
+```
+
+### Windows
+
+```powershell
+winget install Kitware.CMake LLVM.LLVM
+[Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\Program Files\LLVM\bin", "Machine")
+# restart terminal
+```
+
 ## Build & Run
 
 ```bash

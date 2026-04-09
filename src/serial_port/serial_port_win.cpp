@@ -14,11 +14,16 @@ bool SerialPort::open(const std::string& /*path*/) {
 
 void SerialPort::close() {}
 
-std::vector<uint8_t> SerialPort::read(int /*timeoutMs*/) const {
-    return {};
+bool SerialPort::isOpen() const {
+    return handle_ != reinterpret_cast<void*>(-1);
 }
 
-bool SerialPort::write(const std::vector<uint8_t>& /*data*/) {
+bool SerialPort::send() {
+    write_buf_.clear();
+    return false;
+}
+
+bool SerialPort::recv() {
     return false;
 }
 
