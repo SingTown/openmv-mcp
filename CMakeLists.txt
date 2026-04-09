@@ -81,6 +81,7 @@ if(WIN32)
         tests/crc_test.cpp
         tests/ring_buffer_test.cpp
         tests/utf8_buffer_test.cpp
+        tests/subprocess_test.cpp
     )
 else()
     set(TEST_SOURCES
