@@ -2,6 +2,9 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
+#include <mutex>
+#include <stdexcept>
 #include <thread>
 
 namespace mcp {
@@ -16,7 +19,7 @@ TEST(SubprocessTest, EchoOutput) {
 
 TEST(SubprocessTest, ExitCode) {
     Subprocess proc({"exit 42"});
-    proc.join();
+    EXPECT_THROW(proc.join(), std::runtime_error);
     EXPECT_TRUE(proc.finished());
     EXPECT_EQ(proc.exitCode(), 42);
 }
@@ -30,7 +33,7 @@ TEST(SubprocessTest, StderrCaptured) {
 
 TEST(SubprocessTest, InvalidExecutable) {
     Subprocess proc({"__nonexistent_binary_12345__"});
-    proc.join();
+    EXPECT_THROW(proc.join(), std::runtime_error);
     EXPECT_TRUE(proc.finished());
     EXPECT_EQ(proc.exitCode(), 127);
 }
@@ -50,7 +53,7 @@ TEST(SubprocessTest, Kill) {
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
     EXPECT_FALSE(proc.finished());
     proc.kill();
-    proc.join();
+    EXPECT_THROW(proc.join(), std::runtime_error);
     EXPECT_TRUE(proc.finished());
     // SIGKILL (signal 9) -> 128 + 9 = 137
     EXPECT_EQ(proc.exitCode(), 137);
@@ -123,11 +126,70 @@ TEST(SubprocessTest, MultipleCommandsSequential) {
 
 TEST(SubprocessTest, MultipleCommandsStopOnFailure) {
     Subprocess proc({"echo before", "false", "echo after"});
-    proc.join();
+    EXPECT_THROW(proc.join(), std::runtime_error);
     EXPECT_NE(proc.exitCode(), 0);
     std::string output = proc.readOutput();
     EXPECT_TRUE(output.find("before") != std::string::npos);
     EXPECT_TRUE(output.find("after") == std::string::npos);
+}
+
+TEST(SubprocessTest, Callback) {
+    std::mutex mtx;
+    std::string collected;
+    auto callback = [&](const std::string& text) {
+        std::lock_guard<std::mutex> lock(mtx);
+        collected += text;
+    };
+    Subprocess proc({"echo hello; echo world"}, ".", callback);
+    proc.join();
+    std::lock_guard<std::mutex> lock(mtx);
+    EXPECT_TRUE(collected.find("hello") != std::string::npos);
+    EXPECT_TRUE(collected.find("world") != std::string::npos);
+}
+
+TEST(SubprocessTest, CallbackStreaming) {
+    std::mutex mtx;
+    int call_count = 0;
+    auto callback = [&](const std::string& /*text*/) {
+        std::lock_guard<std::mutex> lock(mtx);
+        ++call_count;
+    };
+    Subprocess proc({"for i in 1 2 3 4 5; do echo line$i; sleep 0.1; done"}, ".", callback);
+    proc.join();
+    std::lock_guard<std::mutex> lock(mtx);
+    EXPECT_GT(call_count, 0);
+}
+
+TEST(SubprocessTest, Cancelled) {
+    std::atomic<bool> cancelled{false};
+    Subprocess proc({"sleep 60"}, ".", nullptr, cancelled);
+    std::this_thread::sleep_for(std::chrono::milliseconds(50));
+    EXPECT_FALSE(proc.finished());
+    cancelled = true;
+    EXPECT_THROW(proc.join(), std::runtime_error);
+    EXPECT_TRUE(proc.finished());
+}
+
+TEST(SubprocessTest, CancelledWithCallback) {
+    std::atomic<bool> cancelled{false};
+    std::mutex mtx;
+    std::string collected;
+    auto callback = [&](const std::string& text) {
+        std::lock_guard<std::mutex> lock(mtx);
+        collected += text;
+    };
+    Subprocess proc({"for i in $(seq 1 100); do echo line$i; sleep 0.1; done"}, ".", callback, cancelled);
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+    cancelled = true;
+    EXPECT_THROW(proc.join(), std::runtime_error);
+    std::lock_guard<std::mutex> lock(mtx);
+    EXPECT_FALSE(collected.empty());
+}
+
+TEST(SubprocessTest, CancelledBeforeStart) {
+    std::atomic<bool> cancelled{true};
+    Subprocess proc({"echo should not run"}, ".", nullptr, cancelled);
+    EXPECT_THROW(proc.join(), std::runtime_error);
 }
 
 }  // namespace mcp

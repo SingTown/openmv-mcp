@@ -21,51 +21,22 @@ static fs::path resolveFirmwareDir(const fs::path& dir) {
     return resourcePath() / dir;
 }
 
-static void checkCancelled(const std::atomic<bool>& cancelled) {
-    if (cancelled.load()) {
-        throw std::runtime_error("Operation cancelled");
-    }
-}
-
 static void waitForDevice(const std::string& detectCommand, const std::atomic<bool>& cancelled) {
     if (detectCommand.empty()) {
         return;
     }
 
     while (true) {
-        checkCancelled(cancelled);
-        Subprocess probe({detectCommand});
-        probe.join();
-        if (probe.exitCode() == 0) {
+        try {
+            Subprocess({detectCommand}, ".", nullptr, cancelled).join();
             return;
+        } catch (const std::runtime_error&) {
+            if (cancelled.load()) {
+                throw;
+            }
         }
 
         std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-}
-
-static void runCommands(const std::vector<std::string>& commands,
-                        const MessageCallback& onDebug,
-                        const fs::path& cwd,
-                        const std::atomic<bool>& cancelled) {
-    Subprocess proc(commands, cwd);
-
-    while (!proc.finished()) {
-        checkCancelled(cancelled);
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        auto output = proc.readOutput();
-        if (!output.empty() && onDebug) {
-            onDebug(output);
-        }
-    }
-
-    auto remaining = proc.readOutput();
-    if (!remaining.empty() && onDebug) {
-        onDebug(remaining);
-    }
-
-    if (proc.exitCode() != 0) {
-        throw std::runtime_error("Command failed with exit code " + std::to_string(proc.exitCode()));
     }
 }
 
@@ -95,7 +66,7 @@ void firmwareRepair(const std::string& name,
     if (onNotice) {
         onNotice("Flashing bootloader...");
     }
-    runCommands(board.bootloaderCommands, onDebug, fwDir, cancelled);
+    Subprocess(board.bootloaderCommands, fwDir, onDebug, cancelled).join();
 
     if (onNotice && !board.bootloaderDetectMessage.empty()) {
         onNotice(board.bootloaderDetectMessage);
@@ -104,7 +75,7 @@ void firmwareRepair(const std::string& name,
     if (onNotice) {
         onNotice("Flashing firmware...");
     }
-    runCommands(board.firmwareCommands, onDebug, fwDir, cancelled);
+    Subprocess(board.firmwareCommands, fwDir, onDebug, cancelled).join();
 }
 
 void firmwareFlash(const std::string& name,
@@ -125,7 +96,7 @@ void firmwareFlash(const std::string& name,
         onNotice("Flashing firmware...");
     }
     auto dir = firmwareDir.empty() ? board.firmwareDir : firmwareDir;
-    runCommands(board.firmwareCommands, onDebug, resolveFirmwareDir(dir), cancelled);
+    Subprocess(board.firmwareCommands, resolveFirmwareDir(dir), onDebug, cancelled).join();
 }
 
 }  // namespace mcp

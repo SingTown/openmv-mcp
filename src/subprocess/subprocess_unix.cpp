@@ -14,10 +14,19 @@
 
 namespace mcp {
 
-Subprocess::Subprocess(const std::vector<std::string>& commands, const std::filesystem::path& cwd) {
+Subprocess::Subprocess(const std::vector<std::string>& commands,
+                       const std::filesystem::path& cwd,
+                       OutputCallback callback,
+                       const std::atomic<bool>& cancelled)
+    : callback_(std::move(callback)), cancelled_(cancelled) {
     if (commands.empty()) {
         finished_ = true;
         exit_code_ = 0;
+        return;
+    }
+
+    if (cancelled_.load()) {
+        finished_ = true;
         return;
     }
 
@@ -84,13 +93,29 @@ void Subprocess::readLoop(pid_t pid) {
     bool exited_normally = false;
     std::array<char, 4096> buf{};
 
-    auto consume = [&](ssize_t n) { output_buf_.append(buf.data(), static_cast<size_t>(n)); };
+    auto consume = [&](ssize_t n) {
+        output_buf_.append(buf.data(), static_cast<size_t>(n));
+        if (callback_) {
+            auto text = output_buf_.take();
+            if (!text.empty()) {
+                callback_(text);
+            }
+        }
+    };
 
     struct pollfd pfd{};
     pfd.fd = pipe_fd_;
     pfd.events = POLLIN;
 
     while (true) {
+        if (cancelled_.load()) {
+            pid_t p = pid_.exchange(-1);
+            if (p > 0) {
+                ::kill(-p, SIGKILL);
+            }
+            break;
+        }
+
         int poll_ret = poll(&pfd, 1, 50);
 
         if (poll_ret == -1 && errno != EINTR) {
