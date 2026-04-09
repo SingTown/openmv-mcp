@@ -1,42 +1,28 @@
 #include "mcp_server_test.h"
 
+#include <httplib/httplib.h>
+
+#include <set>
+
 // =======================================================================
 // Protocol tests
 // =======================================================================
 
 TEST_F(McpServerTest, Health) {
-    auto res = client_->Get("/health");
-    ASSERT_NE(res, nullptr);
-    EXPECT_EQ(res->status, 200);
-    auto body = json::parse(res->body);
-    EXPECT_EQ(body["status"], "ok");
+    EXPECT_TRUE(client_->isHealthy());
 }
 
 TEST_F(McpServerTest, Initialize) {
-    json req = {{"jsonrpc", "2.0"},
-                {"id", next_id_++},
-                {"method", "initialize"},
-                {"params",
-                 {{"protocolVersion", "2025-03-26"},
-                  {"capabilities", json::object()},
-                  {"clientInfo", {{"name", "test"}, {"version", "1.0"}}}}}};
-    auto resp = post_mcp(req);
-    EXPECT_EQ(resp["jsonrpc"], "2.0");
-    ASSERT_TRUE(resp.contains("result"));
-    auto& r = resp["result"];
-    EXPECT_EQ(r["protocolVersion"], "2025-03-26");
-    EXPECT_TRUE(r.contains("capabilities"));
-    EXPECT_EQ(r["serverInfo"]["name"], "openmv-mcp-server");
+    EXPECT_NO_THROW(client_->initialize());
 }
 
 TEST_F(McpServerTest, Ping) {
-    json req = {{"jsonrpc", "2.0"}, {"id", next_id_++}, {"method", "ping"}};
-    auto resp = post_mcp(req);
-    EXPECT_TRUE(resp.contains("result"));
+    EXPECT_NO_THROW(client_->ping());
 }
 
 TEST_F(McpServerTest, InvalidJson) {
-    auto res = client_->Post("/mcp", "not json{{{", "application/json");
+    httplib::Client http("127.0.0.1", kPort);
+    auto res = http.Post("/mcp", "not json{{{", "application/json");
     ASSERT_NE(res, nullptr);
     auto resp = json::parse(res->body);
     ASSERT_TRUE(resp.contains("error"));
@@ -44,15 +30,21 @@ TEST_F(McpServerTest, InvalidJson) {
 }
 
 TEST_F(McpServerTest, InvalidJsonRpcVersion) {
-    json req = {{"jsonrpc", "1.0"}, {"id", next_id_++}, {"method", "ping"}};
-    auto resp = post_mcp(req);
+    httplib::Client http("127.0.0.1", kPort);
+    json req = {{"jsonrpc", "1.0"}, {"id", 9999}, {"method", "ping"}};
+    auto res = http.Post("/mcp", req.dump(), "application/json");
+    ASSERT_NE(res, nullptr);
+    auto resp = json::parse(res->body);
     ASSERT_TRUE(resp.contains("error"));
     EXPECT_EQ(resp["error"]["code"], -32600);
 }
 
 TEST_F(McpServerTest, UnknownMethod) {
-    json req = {{"jsonrpc", "2.0"}, {"id", next_id_++}, {"method", "nonexistent"}};
-    auto resp = post_mcp(req);
+    httplib::Client http("127.0.0.1", kPort);
+    json req = {{"jsonrpc", "2.0"}, {"id", 9999}, {"method", "nonexistent"}};
+    auto res = http.Post("/mcp", req.dump(), "application/json");
+    ASSERT_NE(res, nullptr);
+    auto resp = json::parse(res->body);
     ASSERT_TRUE(resp.contains("error"));
     EXPECT_EQ(resp["error"]["code"], -32601);
 }
@@ -62,15 +54,11 @@ TEST_F(McpServerTest, UnknownMethod) {
 // =======================================================================
 
 TEST_F(McpServerTest, ToolsList) {
-    json req = {{"jsonrpc", "2.0"}, {"id", next_id_++}, {"method", "tools/list"}};
-    auto resp = post_mcp(req);
-    ASSERT_TRUE(resp.contains("result"));
-    auto& tools = resp["result"]["tools"];
-    ASSERT_TRUE(tools.is_array());
+    auto tools = client_->listTools();
     EXPECT_EQ(tools.size(), 10U);
 
     std::set<std::string> names;
-    for (const auto& t : tools) names.insert(t["name"].get<std::string>());
+    for (const auto& t : tools) names.insert(t.name);
     EXPECT_TRUE(names.count("list_cameras"));
     EXPECT_TRUE(names.count("camera_connect"));
     EXPECT_TRUE(names.count("camera_disconnect"));
@@ -84,21 +72,15 @@ TEST_F(McpServerTest, ToolsList) {
 }
 
 TEST_F(McpServerTest, UnknownTool) {
-    auto resp = call_tool("nonexistent_tool");
-    ASSERT_TRUE(resp.contains("error"));
-    EXPECT_EQ(resp["error"]["code"], -32602);
+    EXPECT_THROW(client_->callTool("nonexistent_tool").wait(), std::runtime_error);
 }
 
 TEST_F(McpServerTest, ListCameras) {
-    auto resp = call_tool("list_cameras");
-    ASSERT_TRUE(resp.contains("result"));
-    auto& content = resp["result"]["content"];
-    ASSERT_TRUE(content.is_array());
-    if (!content.empty()) {
-        EXPECT_EQ(content[0]["type"], "text");
-        auto cameras = json::parse(content[0]["text"].get<std::string>());
-        EXPECT_TRUE(cameras.is_array());
-    }
+    auto result = client_->callTool("list_cameras").wait();
+    ASSERT_FALSE(result.content.empty());
+    EXPECT_EQ(result.content[0].type, "text");
+    auto cameras = json::parse(result.content[0].text);
+    EXPECT_TRUE(cameras.is_array());
 }
 
 // =======================================================================
@@ -106,37 +88,31 @@ TEST_F(McpServerTest, ListCameras) {
 // =======================================================================
 
 TEST_F(McpServerTest, CameraConnectInvalidPath) {
-    auto resp = call_tool("camera_connect", {{"cameraPath", "/dev/cu.nonexistent"}});
-    ASSERT_TRUE(resp.contains("result"));
-    EXPECT_TRUE(resp["result"].value("isError", false));
+    auto result = client_->callTool("camera_connect", {{"cameraPath", "/dev/cu.nonexistent"}}).wait();
+    EXPECT_TRUE(result.is_error);
 }
 
 TEST_F(McpServerTest, CameraDisconnectNotConnected) {
-    auto resp = call_tool("camera_disconnect", {{"cameraPath", "/dev/cu.nonexistent"}});
-    ASSERT_TRUE(resp.contains("result"));
-    EXPECT_TRUE(resp["result"].value("isError", false));
+    auto result = client_->callTool("camera_disconnect", {{"cameraPath", "/dev/cu.nonexistent"}}).wait();
+    EXPECT_TRUE(result.is_error);
 }
 
 TEST_F(McpServerTest, CameraInfoNotConnected) {
-    auto resp = call_tool("camera_info", {{"cameraPath", "/dev/cu.nonexistent"}});
-    ASSERT_TRUE(resp.contains("result"));
-    EXPECT_TRUE(resp["result"].value("isError", false));
+    auto result = client_->callTool("camera_info", {{"cameraPath", "/dev/cu.nonexistent"}}).wait();
+    EXPECT_TRUE(result.is_error);
 }
 
 TEST_F(McpServerTest, ScriptRunningNotConnected) {
-    auto resp = call_tool("script_running", {{"cameraPath", "/dev/cu.nonexistent"}});
-    ASSERT_TRUE(resp.contains("result"));
-    EXPECT_TRUE(resp["result"].value("isError", false));
+    auto result = client_->callTool("script_running", {{"cameraPath", "/dev/cu.nonexistent"}}).wait();
+    EXPECT_TRUE(result.is_error);
 }
 
 TEST_F(McpServerTest, ReadFrameNotConnected) {
-    auto resp = call_tool("read_frame", {{"cameraPath", "/dev/cu.nonexistent"}});
-    ASSERT_TRUE(resp.contains("result"));
-    EXPECT_TRUE(resp["result"].value("isError", false));
+    auto result = client_->callTool("read_frame", {{"cameraPath", "/dev/cu.nonexistent"}}).wait();
+    EXPECT_TRUE(result.is_error);
 }
 
 TEST_F(McpServerTest, CameraResetNotConnected) {
-    auto resp = call_tool("camera_reset", {{"cameraPath", "/dev/cu.nonexistent"}});
-    ASSERT_TRUE(resp.contains("result"));
-    EXPECT_TRUE(resp["result"].value("isError", false));
+    auto result = client_->callTool("camera_reset", {{"cameraPath", "/dev/cu.nonexistent"}}).wait();
+    EXPECT_TRUE(result.is_error);
 }

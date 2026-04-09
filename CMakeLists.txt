@@ -9,6 +9,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CORE_SOURCES
     src/server/mcp_server.cpp
     src/server/mcp_tool.cpp
+    src/client/mcp_client.cpp
     src/board.cpp
     src/camera.cpp
     src/frame.cpp

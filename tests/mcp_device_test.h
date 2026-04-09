@@ -8,23 +8,20 @@ class DeviceTest : public McpServerTest {
         camera_path_ = discoverCamera();
         if (camera_path_.empty()) GTEST_SKIP() << "No camera connected";
 
-        auto conn = call_tool("camera_connect", {{"cameraPath", camera_path_}});
-        ASSERT_TRUE(conn.contains("result")) << conn.dump();
-        ASSERT_FALSE(conn["result"].value("isError", false)) << conn.dump();
+        auto result = client_->callTool("camera_connect", {{"cameraPath", camera_path_}}).wait();
+        ASSERT_FALSE(result.is_error);
     }
 
     void TearDown() override {
         if (camera_path_.empty()) return;
-        call_tool("stop_script", {{"cameraPath", camera_path_}});
-        call_tool("camera_disconnect", {{"cameraPath", camera_path_}});
+        client_->callTool("stop_script", {{"cameraPath", camera_path_}}).wait();
+        client_->callTool("camera_disconnect", {{"cameraPath", camera_path_}}).wait();
     }
 
     static std::string discoverCamera() {
-        auto resp = call_tool("list_cameras");
-        if (!resp.contains("result")) return "";
-        auto& content = resp["result"]["content"];
-        if (!content.is_array() || content.empty()) return "";
-        auto cameras = json::parse(content[0]["text"].get<std::string>());
+        auto result = client_->callTool("list_cameras").wait();
+        if (result.content.empty()) return "";
+        auto cameras = json::parse(result.content[0].text);
         if (!cameras.is_array() || cameras.empty()) return "";
         return cameras[0]["path"].get<std::string>();
     }
@@ -34,11 +31,10 @@ class DeviceTest : public McpServerTest {
         auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
         while (std::chrono::steady_clock::now() < deadline) {
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            auto resp = call_tool("read_terminal", {{"cameraPath", camera_path_}});
-            if (resp.is_null() || !resp.contains("result")) continue;
-            auto& text = resp["result"]["content"][0]["text"];
-            if (!text.is_string()) continue;
-            output += json::parse(text.get<std::string>())["output"].get<std::string>();
+            auto result = client_->callTool("read_terminal", {{"cameraPath", camera_path_}}).wait();
+            if (result.content.empty()) continue;
+            auto terminal = json::parse(result.content[0].text);
+            output += terminal["output"].get<std::string>();
             if (output.find(expected) != std::string::npos) break;
         }
         return output;
