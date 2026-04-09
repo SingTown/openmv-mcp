@@ -5,6 +5,7 @@
 #include "board.h"
 #include "camera.h"
 #include "camera_list/camera_list.h"
+#include "firmware.h"
 
 namespace mcp {
 
@@ -68,19 +69,8 @@ static const McpTool TOOL_CAMERA_INFO = {
         char id_buf[25];
         std::snprintf(id_buf, sizeof(id_buf), "%08X%08X%08X", si.device_id[0], si.device_id[1], si.device_id[2]);
 
-        std::string board_type = si.board_type;
-        std::string board_name = si.board_name;
-        if (board_type.empty() || board_name.empty()) {
-            const auto* b = findBoard(si.vid, si.pid);
-            if (b != nullptr) {
-                if (board_type.empty()) {
-                    board_type = b->boardType;
-                }
-                if (board_name.empty()) {
-                    board_name = b->name;
-                }
-            }
-        }
+        const auto& board_type = si.board_type;
+        const auto& board_name = si.board_name;
 
         char fw_buf[16];
         std::snprintf(fw_buf, sizeof(fw_buf), "%d.%d.%d", si.fw_version[0], si.fw_version[1], si.fw_version[2]);
@@ -204,6 +194,64 @@ static const McpTool TOOL_READ_FRAME = {
     },
 };
 
+static json boardEnum() {
+    json result = json::array();
+    for (const auto& b : allBoards()) {
+        if (!b.firmwareCommands.empty()) {
+            result.push_back(b.name);
+        }
+    }
+    return result;
+}
+
+static const McpTool TOOL_FIRMWARE_FLASH = {
+    "firmware_flash",
+    "Flash firmware to the camera. If firmwareDir is omitted or empty, upgrades to the default (latest) firmware.",
+    {{"type", "object"},
+     {"properties",
+      {{"cameraPath", {{"type", "string"}, {"description", "Serial port path of the camera"}}},
+       {"firmwareDir",
+        {{"type", "string"},
+         {"description", "Path to the firmware directory. If omitted, uses the default firmware."}}}}},
+     {"required", json::array({"cameraPath"})}},
+    [](McpContext& ctx, const json& args, const std::atomic<bool>& cancelled) {
+        auto cameraPath = args.at("cameraPath").get<std::string>();
+        auto& cam = ctx.getCamera(cameraPath);
+        auto name = cam.systemInfo.board_name;
+        if (name.empty()) {
+            throw std::runtime_error("Camera board name is unknown; cannot determine firmware target");
+        }
+        auto firmwareDir = args.value("firmwareDir", std::string{});
+        cam.boot();
+        ctx.removeCamera(cameraPath);
+        auto onNotice = [&](const std::string& msg) { ctx.streamMessage(msg, "notice"); };
+        auto onDebug = [&](const std::string& msg) { ctx.streamMessage(msg, "debug"); };
+        firmwareFlash(name, firmwareDir, onNotice, onDebug, cancelled);
+        McpContent resp;
+        resp.addText(json({{"success", true}}));
+        return resp;
+    },
+    true,
+};
+
+static const McpTool TOOL_FIRMWARE_REPAIR = {
+    "firmware_repair",
+    "Fully repair an OpenMV camera by flashing both bootloader and firmware",
+    {{"type", "object"},
+     {"properties", {{"name", {{"type", "string"}, {"description", "Board name"}, {"enum", boardEnum()}}}}},
+     {"required", json::array({"name"})}},
+    [](McpContext& ctx, const json& args, const std::atomic<bool>& cancelled) {
+        auto name = args.at("name").get<std::string>();
+        auto onNotice = [&](const std::string& msg) { ctx.streamMessage(msg, "notice"); };
+        auto onDebug = [&](const std::string& msg) { ctx.streamMessage(msg, "debug"); };
+        firmwareRepair(name, onNotice, onDebug, cancelled);
+        McpContent resp;
+        resp.addText(json({{"success", true}}));
+        return resp;
+    },
+    true,
+};
+
 const std::vector<const McpTool*> ALL_MCP_TOOLS = {
     &TOOL_LIST_CAMERAS,
     &TOOL_CAMERA_CONNECT,
@@ -215,6 +263,8 @@ const std::vector<const McpTool*> ALL_MCP_TOOLS = {
     &TOOL_READ_TERMINAL,
     &TOOL_SCRIPT_RUNNING,
     &TOOL_READ_FRAME,
+    &TOOL_FIRMWARE_FLASH,
+    &TOOL_FIRMWARE_REPAIR,
 };
 
 }  // namespace mcp

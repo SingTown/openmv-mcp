@@ -1,5 +1,6 @@
 #pragma once
 
+#include "board.h"
 #include "client/mcp_client.h"
 #include "server/mcp_server.h"
 
@@ -15,6 +16,7 @@ using json = nlohmann::json;
 class McpServerTest : public ::testing::Test {
  protected:
     static void SetUpTestSuite() {
+        mcp::setResourcePath("resource");
         server_ = std::make_unique<mcp::McpServer>(kPort);
         server_thread_ = std::thread([]() { server_->start(); });
         client_ = std::make_unique<mcp::McpClient>("127.0.0.1", kPort);

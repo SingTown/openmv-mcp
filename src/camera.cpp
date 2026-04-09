@@ -167,14 +167,13 @@ void Camera::startLoopThread() {
                 std::cerr << "Protocol poll error: " << e.what() << '\n';
                 if (++consecutive_errors >= kMaxConsecutiveErrors) {
                     std::cerr << "Protocol loop: " << kMaxConsecutiveErrors << " consecutive errors, stopping.\n";
+                    port_->close();
                     break;
                 }
             }
             std::this_thread::sleep_for(std::chrono::milliseconds(kPollMs));
         }
-        if (port_) {
-            port_->close();
-        }
+        updateConnected(false);
     });
 }
 

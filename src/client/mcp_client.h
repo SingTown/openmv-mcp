@@ -69,6 +69,7 @@ class McpClient {
     void initialize();
     std::vector<ToolInfo> listTools();
     ToolResponse callTool(const std::string& name, const json& args = json::object());
+    void cancelTool(int requestId);
     void ping();
 
     bool isHealthy();

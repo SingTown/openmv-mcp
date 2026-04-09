@@ -10,8 +10,8 @@ cmake -B build
 cmake --build build
 
 # Run server (default port 15257)
-./build/openmv_mcp_server
-./build/openmv_mcp_server --port 9000
+./build/openmv_mcp_server --resource-path resource
+./build/openmv_mcp_server --resource-path resource --port 9000
 ```
 
 ## Test
@@ -34,6 +34,11 @@ cmake --build build --target check    # check formatting (CI)
 
 This is an MCP (Model Context Protocol) server for controlling OpenMV cameras. It uses **Streamable HTTP** transport (not stdio) over JSON-RPC 2.0.
 
+### Command-Line Options
+
+- `--resource-path, -r` — path to the resource directory containing firmware files and flashing tools (dfu-util, sdphost, blhost). Required for firmware repair/upgrade operations.
+- `--port, -p` — HTTP port (default: 15257)
+
 ### Core Modules
 
 - **MCP Server**: `src/server/mcp_server.h/.cpp` — HTTP routing, JSON-RPC dispatch, WebSocket endpoints
@@ -45,5 +50,6 @@ This is an MCP (Model Context Protocol) server for controlling OpenMV cameras. I
 - **Serial Port**: `src/serial_port/` — cross-platform serial I/O (macOS/Linux/Windows)
 - **Subprocess**: `src/subprocess/` — cross-platform process execution with streaming output capture
 - **Camera List**: `src/camera_list/` — platform-specific USB camera discovery
-- **Board**: `src/board.h/.cpp` — board/sensor database and USB device lookup
+- **Firmware**: `src/firmware.h/.cpp` — firmware flash and repair operations using subprocess-based flashing tools
+- **Board**: `src/board.h/.cpp` — board/sensor database, USB device lookup, and firmware command definitions
 - **Utilities**: `src/utils/` — base64, CRC, ring buffer, UTF-8 buffer

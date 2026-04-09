@@ -109,9 +109,10 @@ std::vector<PortInfo> listCameras() {
         find_usb_parent(service, vid, pid);
         IOObjectRelease(service);
 
-        const auto* b = findBoard(vid, pid);
-        if (b) {
-            result.push_back({std::move(path), b->name});
+        try {
+            const auto& b = findBoardByVidPid(vid, pid);
+            result.push_back({std::move(path), b.name});
+        } catch (const std::runtime_error&) {
         }
     }
 

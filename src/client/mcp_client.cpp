@@ -100,7 +100,7 @@ void McpClient::executeToolCall(const std::string& host,
     try {
         httplib::Client client(host, port);
         client.set_connection_timeout(5);
-        client.set_read_timeout(30);
+        client.set_read_timeout(180);
 
         std::string body;
         auto res = client.Post(
@@ -135,6 +135,10 @@ void McpClient::executeToolCall(const std::string& host,
     } catch (...) {
         state->error = std::current_exception();
     }
+}
+
+void McpClient::cancelTool(int requestId) {
+    sendNotification("notifications/cancelled", {{"requestId", requestId}});
 }
 
 void McpClient::ping() {

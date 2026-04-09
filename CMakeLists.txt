@@ -11,6 +11,7 @@ set(CORE_SOURCES
     src/server/mcp_tool.cpp
     src/client/mcp_client.cpp
     src/board.cpp
+    src/firmware.cpp
     src/camera.cpp
     src/frame.cpp
     src/protocol/protocol_detect.cpp
@@ -71,6 +72,7 @@ include(GoogleTest)
 add_executable(openmv_mcp_server_test ${CORE_SOURCES}
     tests/mcp_server_test.cpp
     tests/mcp_device_test.cpp
+    tests/mcp_firmware_test.cpp
     tests/mcp_ws_test.cpp
     tests/frame_test.cpp
     tests/base64_test.cpp
@@ -81,7 +83,7 @@ add_executable(openmv_mcp_server_test ${CORE_SOURCES}
 )
 target_include_directories(openmv_mcp_server_test PRIVATE ${COMMON_INCLUDES})
 target_link_libraries(openmv_mcp_server_test PRIVATE ${COMMON_LIBS} GTest::gtest_main)
-gtest_discover_tests(openmv_mcp_server_test PROPERTIES TIMEOUT 60 ENVIRONMENT "GTEST_FAIL_FAST=1")
+gtest_discover_tests(openmv_mcp_server_test WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTIES TIMEOUT 300 ENVIRONMENT "GTEST_FAIL_FAST=1")
 
 # --- clang-format / clang-tidy targets ---
 file(GLOB_RECURSE ALL_SOURCES src/*.cpp src/*.h tests/*.cpp)

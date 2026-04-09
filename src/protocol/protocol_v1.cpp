@@ -138,7 +138,7 @@ void ProtocolV1::readArchStr() {
         systemInfo.board_type = arch.substr(lbracket + 1, colon - lbracket - 1);
         std::string archPrefix = arch.substr(0, lbracket);
         while (!archPrefix.empty() && archPrefix.back() == ' ') archPrefix.pop_back();
-        for (const auto& b : ALL_BOARDS) {
+        for (const auto& b : allBoards()) {
             if (b.archString == archPrefix) {
                 systemInfo.board_name = b.name;
                 break;
