@@ -24,6 +24,7 @@ int detectProtocol(SerialPort& port) {
 
     try {
         auto response = port.read_bytes(4);
+        port.purge();
         uint16_t first_word = static_cast<uint16_t>(response[0] | (response[1] << 8));
         return (first_word != 0xD5AA) ? 1 : 2;
     } catch (const std::runtime_error&) {

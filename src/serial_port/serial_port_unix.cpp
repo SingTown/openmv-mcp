@@ -98,11 +98,18 @@ bool SerialPort::open(const std::string& path) {
 
 void SerialPort::close() {
     if (fd_ >= 0) {
-        tcdrain(fd_);
+        tcflush(fd_, TCIOFLUSH);
         ::close(fd_);
         fd_ = -1;
     }
     write_buf_.clear();
+    recv_buf_.clear();
+}
+
+void SerialPort::purge() {
+    if (fd_ >= 0) {
+        tcflush(fd_, TCIOFLUSH);
+    }
     recv_buf_.clear();
 }
 

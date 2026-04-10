@@ -25,6 +25,43 @@ TEST_F(DeviceTest, RunScriptAndReadTerminal) {
     EXPECT_NE(output.find("hello_from_openmv"), std::string::npos);
 }
 
+TEST_F(DeviceTest, ScriptRunningAfterDelay) {
+    // Run a snapshot script that also prints to terminal
+    auto result = client_
+                      ->callTool("run_script",
+                                 {{"cameraPath", camera_path_},
+                                  {"script", kSnapshotScript + std::string("    print('frame_ok')\n")}})
+                      .wait();
+    ASSERT_FALSE(result.is_error);
+
+    // Wait for first frame to be ready
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+
+    // Check every second for 10 seconds: frame readable + terminal output
+    int frame_ok = 0;
+    int terminal_ok = 0;
+    for (int i = 0; i < 10; i++) {
+        auto frame = client_->callTool("read_frame", {{"cameraPath", camera_path_}}).wait();
+        if (!frame.is_error) frame_ok++;
+
+        auto term = client_->callTool("read_terminal", {{"cameraPath", camera_path_}}).wait();
+        if (!term.content.empty()) {
+            auto terminal = json::parse(term.content[0].text);
+            std::string output = terminal["output"].get<std::string>();
+            if (output.find("frame_ok") != std::string::npos) terminal_ok++;
+        }
+
+        auto sr = client_->callTool("script_running", {{"cameraPath", camera_path_}}).wait();
+        auto sr_data = json::parse(sr.content[0].text);
+        EXPECT_TRUE(sr_data["running"].get<bool>()) << "script stopped at second " << i;
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+    }
+    std::cout << "Frames read: " << frame_ok << "/10, Terminal reads: " << terminal_ok << "/10" << std::endl;
+    EXPECT_GE(frame_ok, 5) << "Should read frames in at least half of the attempts";
+    EXPECT_GE(terminal_ok, 5) << "Should read terminal in at least half of the attempts";
+}
+
 TEST_F(DeviceTest, StopScript) {
     client_
         ->callTool("run_script",
