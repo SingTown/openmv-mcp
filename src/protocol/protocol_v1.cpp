@@ -43,8 +43,6 @@ constexpr int FB_ENABLE_0_START_DELAY = 50;
 constexpr int FB_ENABLE_0_END_DELAY = 25;
 constexpr int FB_ENABLE_1_START_DELAY = 25;
 constexpr int FB_ENABLE_1_END_DELAY = 50;
-constexpr int FRAME_DUMP_START_DELAY = 50;
-constexpr int FRAME_DUMP_END_DELAY = 25;
 }  // namespace V1Const
 
 void ProtocolV1::delay(int ms) {
@@ -223,9 +221,14 @@ void ProtocolV1::poll() {
         if (w > 0 && h > 0) {
             uint32_t pixformat = 0;
             uint32_t size = 0;
-            if (bpp >= 3) {
+            if (bpp > 3) {
+                // JPEG: bpp IS the compressed data size (not bytes-per-pixel)
                 pixformat = PixFormat::JPEG;
-                size = w * h * bpp;
+                size = bpp;
+            } else if (bpp == 3) {
+                // BAYER: 1 byte per pixel
+                pixformat = PixFormat::GRAYSCALE;
+                size = w * h;
             } else if (bpp == 2) {
                 pixformat = PixFormat::RGB565;
                 size = w * h * 2;
@@ -234,15 +237,28 @@ void ProtocolV1::poll() {
                 size = w * h;
             } else {
                 pixformat = PixFormat::BINARY;
-                size = ((w + 7) / 8) * h;
+                size = ((w + 31) / 32) * 4 * h;
             }
 
-            delay(V1Const::FRAME_DUMP_START_DELAY);
-            sendCommand(V1Opcode::FRAME_DUMP, size);
-            delay(V1Const::FRAME_DUMP_END_DELAY);
-            auto data = port_->read_bytes(size);
-
-            setFrame(Frame(w, h, pixformat, std::move(data)));
+            try {
+                // Read frame in chunks — Windows CDC driver can't deliver large reads
+                constexpr uint32_t kChunkSize = 4096;
+                std::vector<uint8_t> frame_data;
+                frame_data.reserve(size);
+                uint32_t remaining = size;
+                while (remaining > 0) {
+                    uint32_t chunk = remaining < kChunkSize ? remaining : kChunkSize;
+                    sendCommand(V1Opcode::FRAME_DUMP, chunk);
+                    auto chunk_data = port_->read_bytes(chunk);
+                    frame_data.insert(frame_data.end(), chunk_data.begin(), chunk_data.end());
+                    remaining -= chunk;
+                }
+                setFrame(Frame(w, h, pixformat, std::move(frame_data)));
+            } catch (...) {
+                // Frame read failed — purge stale data and skip this frame
+                // Don't rethrow: keep the poll loop alive
+                port_->purge();
+            }
         }
     }
 }

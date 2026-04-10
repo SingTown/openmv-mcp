@@ -106,6 +106,13 @@ void SerialPort::close() {
     recv_buf_.clear();
 }
 
+void SerialPort::purge() {
+    if (fd_ >= 0) {
+        tcflush(fd_, TCIOFLUSH);
+    }
+    recv_buf_.clear();
+}
+
 bool SerialPort::isOpen() const {
     return fd_ >= 0;
 }

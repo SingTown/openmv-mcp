@@ -18,6 +18,7 @@ class SerialPort {
 
     bool open(const std::string& path);
     void close();
+    void purge();
 
     [[nodiscard]] bool isOpen() const;
 

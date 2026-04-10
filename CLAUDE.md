@@ -59,7 +59,7 @@ This is an MCP (Model Context Protocol) server for controlling OpenMV cameras. I
 
 ### Command-Line Options
 
-- `--resource-path, -r` — path to the resource directory containing firmware files and flashing tools (dfu-util, sdphost, blhost). Required for firmware repair/upgrade operations.
+- `--resource-path, -r` — path to the resource directory containing firmware files and flashing tools (dfu-util, sdphost, blhost) (default: `resource`)
 - `--port, -p` — HTTP port (default: 15257)
 
 ### Core Modules

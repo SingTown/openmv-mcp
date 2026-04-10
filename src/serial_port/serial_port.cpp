@@ -31,7 +31,10 @@ void SerialPort::waitForData(size_t n) {
         if (std::chrono::steady_clock::now() >= deadline) {
             throw std::runtime_error("Read timeout");
         }
-        recv();
+        if (recv()) {
+            // Data arrived — reset deadline (matches OpenMV IDE behavior)
+            deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(kTimeoutMs);
+        }
     }
 }
 

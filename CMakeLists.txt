@@ -73,29 +73,21 @@ FetchContent_MakeAvailable(googletest)
 enable_testing()
 include(GoogleTest)
 
-if(WIN32)
-    set(TEST_SOURCES
-        tests/mcp_server_test.cpp
-        tests/frame_test.cpp
-        tests/base64_test.cpp
-        tests/crc_test.cpp
-        tests/ring_buffer_test.cpp
-        tests/utf8_buffer_test.cpp
-        tests/subprocess_test.cpp
-    )
-else()
-    set(TEST_SOURCES
-        tests/mcp_server_test.cpp
-        tests/mcp_device_test.cpp
-        tests/mcp_firmware_test.cpp
-        tests/mcp_ws_test.cpp
-        tests/frame_test.cpp
-        tests/base64_test.cpp
-        tests/crc_test.cpp
-        tests/ring_buffer_test.cpp
-        tests/utf8_buffer_test.cpp
-        tests/subprocess_test.cpp
-    )
+set(TEST_SOURCES
+    tests/mcp_server_test.cpp
+    tests/mcp_device_test.cpp
+    tests/mcp_ws_test.cpp
+    tests/frame_test.cpp
+    tests/base64_test.cpp
+    tests/crc_test.cpp
+    tests/ring_buffer_test.cpp
+    tests/utf8_buffer_test.cpp
+    tests/subprocess_test.cpp
+)
+
+option(ENABLE_FIRMWARE_TEST "Enable mcp_firmware_test" OFF)
+if(ENABLE_FIRMWARE_TEST)
+    list(APPEND TEST_SOURCES tests/mcp_firmware_test.cpp)
 endif()
 
 add_executable(openmv_mcp_server_test ${CORE_SOURCES} ${TEST_SOURCES})
