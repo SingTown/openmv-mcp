@@ -94,7 +94,7 @@ bool SerialPort::open(const std::string& path) {
 void SerialPort::close() {
     if (handle_ != INVALID_HANDLE_VALUE) {
         auto h = static_cast<HANDLE>(handle_);
-        FlushFileBuffers(h);
+        PurgeComm(h, PURGE_RXCLEAR | PURGE_TXCLEAR);
         CloseHandle(h);
         handle_ = INVALID_HANDLE_VALUE;
     }

@@ -98,7 +98,7 @@ bool SerialPort::open(const std::string& path) {
 
 void SerialPort::close() {
     if (fd_ >= 0) {
-        tcdrain(fd_);
+        tcflush(fd_, TCIOFLUSH);
         ::close(fd_);
         fd_ = -1;
     }
