@@ -21,6 +21,7 @@ set(CORE_SOURCES
     src/protocol/protocol_detect.cpp
     src/protocol/protocol_v1.cpp
     src/protocol/protocol_v2.cpp
+    src/license.cpp
     src/serial_port/serial_port.cpp
     src/subprocess/subprocess.cpp
 )
@@ -46,10 +47,11 @@ endif()
 set(COMMON_INCLUDES src src/camera_list src/utils 3rdparty 3rdparty/nlohmann-json/single_include)
 
 find_package(Threads REQUIRED)
-set(COMMON_LIBS Threads::Threads)
+find_package(OpenSSL REQUIRED)
+set(COMMON_LIBS Threads::Threads OpenSSL::SSL OpenSSL::Crypto)
 
 if(APPLE)
-    list(APPEND COMMON_LIBS "-framework IOKit" "-framework CoreFoundation")
+    list(APPEND COMMON_LIBS "-framework IOKit" "-framework CoreFoundation" "-framework Security")
 elseif(UNIX)
     list(APPEND COMMON_LIBS udev)
 elseif(WIN32)
@@ -59,6 +61,7 @@ endif()
 # MCP Server executable
 add_executable(openmv_mcp_server ${CORE_SOURCES} src/main.cpp)
 target_include_directories(openmv_mcp_server PRIVATE ${COMMON_INCLUDES})
+target_compile_definitions(openmv_mcp_server PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)
 target_link_libraries(openmv_mcp_server PRIVATE ${COMMON_LIBS})
 
 # Test executable
@@ -92,6 +95,7 @@ endif()
 
 add_executable(openmv_mcp_server_test ${CORE_SOURCES} ${TEST_SOURCES})
 target_include_directories(openmv_mcp_server_test PRIVATE ${COMMON_INCLUDES})
+target_compile_definitions(openmv_mcp_server_test PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)
 target_link_libraries(openmv_mcp_server_test PRIVATE ${COMMON_LIBS} GTest::gtest_main)
 gtest_discover_tests(openmv_mcp_server_test WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTIES TIMEOUT 300 ENVIRONMENT "GTEST_FAIL_FAST=1")
 

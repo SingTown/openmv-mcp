@@ -32,6 +32,7 @@ npx @modelcontextprotocol/inspector --config mcp-inspector.json
 | `frame_capture` | Capture a frame as base64 JPEG |
 | `firmware_flash` | Flash firmware to the camera |
 | `firmware_repair` | Fully repair camera (bootloader + firmware) |
+| `license_register` | Register a board key for the connected camera |
 
 ## WebSocket Endpoints
 

@@ -7,20 +7,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### macOS
 
 ```bash
-brew install cmake llvm
+brew install cmake llvm openssl
 export PATH="$(brew --prefix llvm)/bin:$PATH"  # add to ~/.zshrc for clang-tidy/clang-format
 ```
 
 ### Ubuntu / Debian
 
 ```bash
-sudo apt install cmake clang-tidy clang-format
+sudo apt install cmake clang-tidy clang-format libssl-dev
 ```
 
 ### Windows
 
 ```powershell
-winget install Kitware.CMake LLVM.LLVM
+winget install Kitware.CMake LLVM.LLVM ShiningLight.OpenSSL
 [Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\Program Files\LLVM\bin", "Machine")
 # restart terminal
 ```
@@ -75,5 +75,6 @@ This is an MCP (Model Context Protocol) server for controlling OpenMV cameras. I
 - **Camera List**: `src/camera_list/` — platform-specific USB camera discovery
 - **MCP Client**: `src/client/mcp_client.h/.cpp` — MCP protocol client for testing server interactions
 - **Firmware**: `src/firmware.h/.cpp` — firmware flash and repair operations using subprocess-based flashing tools
+- **License**: `src/license.h/.cpp` — license check and registration via OpenMV cloud API (`upload.openmv.io`)
 - **Board**: `src/board.h/.cpp` — board/sensor database, USB device lookup, and firmware command definitions
 - **Utilities**: `src/utils/` — base64, CRC, ring buffer, UTF-8 buffer

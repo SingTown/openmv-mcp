@@ -7,6 +7,7 @@
 #include <string>
 #include <thread>
 
+#include "board.h"
 #include "serial_port/serial_port.h"
 #include "utils/crc.h"
 
@@ -221,6 +222,13 @@ void ProtocolV2::connect(std::shared_ptr<SerialPort> port) {
             for (int i = 0; i < 3; i++)
                 std::memcpy(&systemInfo.sensor_chip_id[i], p + 20 + (static_cast<ptrdiff_t>(i) * 4), 4);
             std::memcpy(&systemInfo.capabilities, p + 40, 4);
+            try {
+                auto board = findBoardByVidPid(systemInfo.vid, systemInfo.pid);
+                systemInfo.board_type = board.boardType;
+                systemInfo.board_name = board.name;
+            } catch (const std::runtime_error&) {
+                // Unknown board — leave board_type/board_name empty
+            }
         }
 
         // Stop any running script

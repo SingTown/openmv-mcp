@@ -1,11 +1,13 @@
 #include "server/mcp_tool.h"
 
 #include <atomic>
+#include <thread>
 
 #include "board.h"
 #include "camera.h"
 #include "camera_list/camera_list.h"
 #include "firmware.h"
+#include "license.h"
 
 namespace mcp {
 
@@ -38,7 +40,9 @@ static const McpTool TOOL_CAMERA_CONNECT = {
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
         auto cameraPath = args.at("cameraPath").get<std::string>();
         auto camera = Camera::create(cameraPath);
-        ctx.addCamera(cameraPath, std::move(camera));
+        auto& cam = ctx.addCamera(cameraPath, std::move(camera));
+        auto& si = cam.systemInfo;
+        std::thread([&si]() { si.licensed = licenseCheck(si.board_name, si.deviceIdHex()); }).detach();
         McpContent resp;
         resp.addText(json({{"success", true}}));
         return resp;
@@ -66,8 +70,7 @@ static const McpTool TOOL_CAMERA_INFO = {
         auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
         const auto& si = cam.systemInfo;
 
-        char id_buf[25];
-        std::snprintf(id_buf, sizeof(id_buf), "%08X%08X%08X", si.device_id[0], si.device_id[1], si.device_id[2]);
+        auto id_buf = si.deviceIdHex();
 
         const auto& board_type = si.board_type;
         const auto& board_name = si.board_name;
@@ -118,6 +121,14 @@ static const McpTool TOOL_SCRIPT_RUN = {
      {"required", json::array({"cameraPath", "script"})}},
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
         auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
+        if (!cam.systemInfo.licensed) {
+            throw std::runtime_error(
+                "Script execution failed: Unregistered OpenMV Cam detected. "
+                "You need to register your OpenMV Cam with OpenMV for unlimited use. "
+                "If you do not have a board key you may purchase one from OpenMV "
+                "(https://openmv.io/products/openmv-cam-board-key). "
+                "Please use the license_register tool with your board key to register.");
+        }
         cam.execScript(args.at("script").get<std::string>());
         McpContent resp;
         resp.addText(json({{"success", true}}));
@@ -252,6 +263,28 @@ static const McpTool TOOL_FIRMWARE_REPAIR = {
     true,
 };
 
+static const McpTool TOOL_LICENSE_REGISTER = {
+    "license_register",
+    "Register a board key for the connected camera",
+    {{"type", "object"},
+     {"properties",
+      {{"cameraPath", {{"type", "string"}, {"description", "Serial port path of the camera"}}},
+       {"boardKey",
+        {{"type", "string"},
+         {"description", "Board key for registration (format: XXXXX-XXXXX-XXXXX-XXXXX-XXXXX)"},
+         {"pattern", "^[0-9A-Z]{5}-[0-9A-Z]{5}-[0-9A-Z]{5}-[0-9A-Z]{5}-[0-9A-Z]{5}$"}}}}},
+     {"required", json::array({"cameraPath", "boardKey"})}},
+    [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
+        auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
+        auto& si = cam.systemInfo;
+        licenseRegister(si.board_name, si.deviceIdHex(), args.at("boardKey").get<std::string>());
+        si.licensed = true;
+        McpContent resp;
+        resp.addText(json({{"success", true}}));
+        return resp;
+    },
+};
+
 const std::vector<const McpTool*> ALL_MCP_TOOLS = {
     &TOOL_CAMERA_LIST,
     &TOOL_CAMERA_CONNECT,
@@ -265,6 +298,7 @@ const std::vector<const McpTool*> ALL_MCP_TOOLS = {
     &TOOL_FRAME_CAPTURE,
     &TOOL_FIRMWARE_FLASH,
     &TOOL_FIRMWARE_REPAIR,
+    &TOOL_LICENSE_REGISTER,
 };
 
 }  // namespace mcp

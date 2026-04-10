@@ -12,7 +12,7 @@
 
 namespace mcp {
 
-using json = nlohmann::json;
+using json = nlohmann::ordered_json;
 
 struct ContentItem {
     std::string type;

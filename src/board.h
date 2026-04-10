@@ -22,6 +22,7 @@ struct Board {
     std::vector<std::string> bootloaderCommands;
     std::vector<std::string> firmwareCommands;
     std::filesystem::path firmwareDir;
+    bool checkLicense = false;
 };
 
 std::vector<Board> allBoards();

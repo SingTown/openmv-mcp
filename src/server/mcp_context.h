@@ -14,7 +14,7 @@
 
 namespace mcp {
 
-using json = nlohmann::json;
+using json = nlohmann::ordered_json;
 
 inline void writeStreamEvent(std::ostream& os, const json& data) {
     os << "event: message\ndata: " << data.dump() << "\n\n" << std::flush;
@@ -44,11 +44,12 @@ class McpContext {
         return *it->second;
     }
 
-    void addCamera(const std::string& path, std::unique_ptr<Camera> camera) {
+    Camera& addCamera(const std::string& path, std::unique_ptr<Camera> camera) {
         if (cameras_.count(path) != 0) {
             throw std::runtime_error("Camera already connected: " + path);
         }
-        cameras_[path] = std::move(camera);
+        auto& ref = cameras_[path] = std::move(camera);
+        return *ref;
     }
 
     void removeCamera(const std::string& path) {

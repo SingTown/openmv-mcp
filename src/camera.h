@@ -28,6 +28,13 @@ struct SystemInfo {
     uint32_t protocol_version = 0;
     std::string board_type;
     std::string board_name;
+    bool licensed = true;
+
+    std::string deviceIdHex() const {
+        char buf[25];
+        std::snprintf(buf, sizeof(buf), "%08X%08X%08X", device_id[0], device_id[1], device_id[2]);
+        return buf;
+    }
 };
 
 class Camera {

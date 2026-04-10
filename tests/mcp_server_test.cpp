@@ -55,7 +55,7 @@ TEST_F(McpServerTest, UnknownMethod) {
 
 TEST_F(McpServerTest, ToolsList) {
     auto tools = client_->listTools();
-    EXPECT_EQ(tools.size(), 12U);
+    EXPECT_EQ(tools.size(), 13U);
 
     std::set<std::string> names;
     for (const auto& t : tools) names.insert(t.name);
