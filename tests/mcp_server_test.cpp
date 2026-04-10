@@ -59,16 +59,16 @@ TEST_F(McpServerTest, ToolsList) {
 
     std::set<std::string> names;
     for (const auto& t : tools) names.insert(t.name);
-    EXPECT_TRUE(names.count("list_cameras"));
+    EXPECT_TRUE(names.count("camera_list"));
     EXPECT_TRUE(names.count("camera_connect"));
     EXPECT_TRUE(names.count("camera_disconnect"));
     EXPECT_TRUE(names.count("camera_info"));
     EXPECT_TRUE(names.count("camera_reset"));
-    EXPECT_TRUE(names.count("run_script"));
-    EXPECT_TRUE(names.count("stop_script"));
-    EXPECT_TRUE(names.count("read_terminal"));
+    EXPECT_TRUE(names.count("script_run"));
+    EXPECT_TRUE(names.count("script_stop"));
+    EXPECT_TRUE(names.count("script_output"));
     EXPECT_TRUE(names.count("script_running"));
-    EXPECT_TRUE(names.count("read_frame"));
+    EXPECT_TRUE(names.count("frame_capture"));
     EXPECT_TRUE(names.count("firmware_flash"));
     EXPECT_TRUE(names.count("firmware_repair"));
 }
@@ -78,7 +78,7 @@ TEST_F(McpServerTest, UnknownTool) {
 }
 
 TEST_F(McpServerTest, ListCameras) {
-    auto result = client_->callTool("list_cameras").wait();
+    auto result = client_->callTool("camera_list").wait();
     ASSERT_FALSE(result.content.empty());
     EXPECT_EQ(result.content[0].type, "text");
     auto cameras = json::parse(result.content[0].text);
@@ -110,7 +110,7 @@ TEST_F(McpServerTest, ScriptRunningNotConnected) {
 }
 
 TEST_F(McpServerTest, ReadFrameNotConnected) {
-    auto result = client_->callTool("read_frame", {{"cameraPath", "/dev/cu.nonexistent"}}).wait();
+    auto result = client_->callTool("frame_capture", {{"cameraPath", "/dev/cu.nonexistent"}}).wait();
     EXPECT_TRUE(result.is_error);
 }
 

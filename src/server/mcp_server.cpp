@@ -80,7 +80,7 @@ void McpServer::setupWebSocket() {
         }
     });
 
-    server_.WebSocket("/ws/frame", [this](const httplib::Request& req, httplib::ws::WebSocket& ws) {
+    server_.WebSocket("/ws/frame-stream", [this](const httplib::Request& req, httplib::ws::WebSocket& ws) {
         auto camera_path = req.get_param_value("camera");
         try {
             auto& cam = ctx_->getCamera(camera_path);

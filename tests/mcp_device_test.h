@@ -14,12 +14,12 @@ class DeviceTest : public McpServerTest {
 
     void TearDown() override {
         if (camera_path_.empty()) return;
-        client_->callTool("stop_script", {{"cameraPath", camera_path_}}).wait();
+        client_->callTool("script_stop", {{"cameraPath", camera_path_}}).wait();
         client_->callTool("camera_disconnect", {{"cameraPath", camera_path_}}).wait();
     }
 
     static std::string discoverCamera() {
-        auto result = client_->callTool("list_cameras").wait();
+        auto result = client_->callTool("camera_list").wait();
         if (result.content.empty()) return "";
         auto cameras = json::parse(result.content[0].text);
         if (!cameras.is_array() || cameras.empty()) return "";
@@ -31,7 +31,7 @@ class DeviceTest : public McpServerTest {
         auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeout_ms);
         while (std::chrono::steady_clock::now() < deadline) {
             std::this_thread::sleep_for(std::chrono::milliseconds(50));
-            auto result = client_->callTool("read_terminal", {{"cameraPath", camera_path_}}).wait();
+            auto result = client_->callTool("script_output", {{"cameraPath", camera_path_}}).wait();
             if (result.content.empty()) continue;
             auto terminal = json::parse(result.content[0].text);
             output += terminal["output"].get<std::string>();

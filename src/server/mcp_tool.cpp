@@ -15,8 +15,8 @@ static const json CAMERA_PATH_PARAM = {
 static const json CAMERA_PATH_SCHEMA = {
     {"type", "object"}, {"properties", CAMERA_PATH_PARAM}, {"required", json::array({"cameraPath"})}};
 
-static const McpTool TOOL_LIST_CAMERAS = {
-    "list_cameras",
+static const McpTool TOOL_CAMERA_LIST = {
+    "camera_list",
     "List connected OpenMV cameras",
     {{"type", "object"}, {"properties", json::object()}, {"required", json::array()}},
     [](McpContext& /*ctx*/, const json& /*args*/, const std::atomic<bool>& /*cancelled*/) {
@@ -100,8 +100,8 @@ static const McpTool TOOL_CAMERA_INFO = {
     },
 };
 
-static const McpTool TOOL_RUN_SCRIPT = {
-    "run_script",
+static const McpTool TOOL_SCRIPT_RUN = {
+    "script_run",
     "Execute a MicroPython script on the camera",
     {{"type", "object"},
      {"properties",
@@ -125,8 +125,8 @@ static const McpTool TOOL_RUN_SCRIPT = {
     },
 };
 
-static const McpTool TOOL_STOP_SCRIPT = {
-    "stop_script",
+static const McpTool TOOL_SCRIPT_STOP = {
+    "script_stop",
     "Stop the currently running script on the camera",
     CAMERA_PATH_SCHEMA,
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
@@ -138,9 +138,9 @@ static const McpTool TOOL_STOP_SCRIPT = {
     },
 };
 
-static const McpTool TOOL_READ_TERMINAL = {
-    "read_terminal",
-    "Read available terminal output (stdout/stderr) from the camera",
+static const McpTool TOOL_SCRIPT_OUTPUT = {
+    "script_output",
+    "Read available script output (stdout/stderr) from the camera",
     CAMERA_PATH_SCHEMA,
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
         auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
@@ -177,8 +177,8 @@ static const McpTool TOOL_CAMERA_RESET = {
     },
 };
 
-static const McpTool TOOL_READ_FRAME = {
-    "read_frame",
+static const McpTool TOOL_FRAME_CAPTURE = {
+    "frame_capture",
     "Capture a single frame from the camera's frame buffer. A script that captures frames must be "
     "running. Returns the image as base64-encoded JPEG.",
     CAMERA_PATH_SCHEMA,
@@ -253,16 +253,16 @@ static const McpTool TOOL_FIRMWARE_REPAIR = {
 };
 
 const std::vector<const McpTool*> ALL_MCP_TOOLS = {
-    &TOOL_LIST_CAMERAS,
+    &TOOL_CAMERA_LIST,
     &TOOL_CAMERA_CONNECT,
     &TOOL_CAMERA_DISCONNECT,
     &TOOL_CAMERA_RESET,
     &TOOL_CAMERA_INFO,
-    &TOOL_RUN_SCRIPT,
-    &TOOL_STOP_SCRIPT,
-    &TOOL_READ_TERMINAL,
+    &TOOL_SCRIPT_RUN,
+    &TOOL_SCRIPT_STOP,
+    &TOOL_SCRIPT_OUTPUT,
     &TOOL_SCRIPT_RUNNING,
-    &TOOL_READ_FRAME,
+    &TOOL_FRAME_CAPTURE,
     &TOOL_FIRMWARE_FLASH,
     &TOOL_FIRMWARE_REPAIR,
 };

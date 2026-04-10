@@ -5,7 +5,7 @@
 class FirmwareTest : public McpServerTest {
  public:
     static std::string discoverCamera() {
-        auto result = client_->callTool("list_cameras").wait();
+        auto result = client_->callTool("camera_list").wait();
         if (result.content.empty()) return "";
         auto cameras = json::parse(result.content[0].text);
         if (!cameras.is_array() || cameras.empty()) return "";
