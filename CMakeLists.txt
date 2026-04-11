@@ -17,11 +17,11 @@ set(CORE_SOURCES
     src/board.cpp
     src/firmware.cpp
     src/camera.cpp
+    src/info.cpp
     src/frame.cpp
     src/protocol/protocol_detect.cpp
     src/protocol/protocol_v1.cpp
     src/protocol/protocol_v2.cpp
-    src/license.cpp
     src/serial_port/serial_port.cpp
     src/subprocess/subprocess.cpp
 )

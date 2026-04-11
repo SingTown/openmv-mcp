@@ -75,6 +75,6 @@ This is an MCP (Model Context Protocol) server for controlling OpenMV cameras. I
 - **Camera List**: `src/camera_list/` — platform-specific USB camera discovery
 - **MCP Client**: `src/client/mcp_client.h/.cpp` — MCP protocol client for testing server interactions
 - **Firmware**: `src/firmware.h/.cpp` — firmware flash and repair operations using subprocess-based flashing tools
-- **License**: `src/license.h/.cpp` — license check and registration via OpenMV cloud API (`upload.openmv.io`)
+- **Info**: `src/info.h/.cpp` — system information and license management for OpenMV cameras
 - **Board**: `src/board.h/.cpp` — board/sensor database, USB device lookup, and firmware command definitions
 - **Utilities**: `src/utils/` — base64, CRC, ring buffer, UTF-8 buffer

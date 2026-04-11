@@ -34,7 +34,7 @@ std::unique_ptr<Camera> Camera::create(const std::string& path) {
 void Camera::disconnect() {
     stopLoopThread();
     port_.reset();
-    systemInfo = {};
+    info = {};
     updateScript(false);
     updateConnected(false);
 }

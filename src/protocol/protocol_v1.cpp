@@ -64,16 +64,8 @@ void ProtocolV1::connect(std::shared_ptr<SerialPort> port) {
     requireOpen();
 
     try {
-        readFwVersion();
-
-        // GET_STATE (0x93) requires firmware >= 4.5.6
-        auto& v = systemInfo.fw_version;
-        if (std::make_tuple(v[0], v[1], v[2]) < std::make_tuple(4U, 5U, 6U)) {
-            throw std::runtime_error("Firmware version " + std::to_string(v[0]) + "." + std::to_string(v[1]) + "." +
-                                     std::to_string(v[2]) + " is too old, requires >= 4.5.6");
-        }
-
         readArchStr();
+        readFwVersion();
         readSensorId();
 
         // Stop any running script
@@ -83,7 +75,7 @@ void ProtocolV1::connect(std::shared_ptr<SerialPort> port) {
 
         enableFrame(true);
 
-        systemInfo.protocol_version = 1;
+        info.setProtocolVersion(1);
         startLoopThread();
     } catch (...) {
         disconnect();
@@ -119,42 +111,19 @@ void ProtocolV1::boot() {
 
 void ProtocolV1::readFwVersion() {
     sendCommand(V1Opcode::FW_VERSION, 12);
-    for (auto& v : systemInfo.fw_version) v = port_->read_le32();
+    info.setFwVersion(port_->read_le32(), port_->read_le32(), port_->read_le32());
 }
 
 void ProtocolV1::readArchStr() {
     sendCommand(V1Opcode::ARCH_STR, 64);
     auto arch_bytes = port_->read_bytes(64);
     std::string arch(arch_bytes.begin(), std::find(arch_bytes.begin(), arch_bytes.end(), static_cast<uint8_t>(0)));
-
-    // Parse arch string: "OMV4 H7 1024 [H7:AABBCCDD11223344EEFF5566]"
-    auto lbracket = arch.rfind('[');
-    auto colon = arch.rfind(':');
-    auto rbracket = arch.rfind(']');
-    if (lbracket != std::string::npos && colon != std::string::npos && rbracket != std::string::npos &&
-        colon > lbracket && rbracket > colon) {
-        systemInfo.board_type = arch.substr(lbracket + 1, colon - lbracket - 1);
-        std::string archPrefix = arch.substr(0, lbracket);
-        while (!archPrefix.empty() && archPrefix.back() == ' ') archPrefix.pop_back();
-        for (const auto& b : allBoards()) {
-            if (b.archString == archPrefix) {
-                systemInfo.board_name = b.name;
-                break;
-            }
-        }
-        std::string idHex = arch.substr(colon + 1, rbracket - colon - 1);
-        if (idHex.size() == 24) {
-            for (int i = 0; i < 3; i++) {
-                systemInfo.device_id[i] = static_cast<uint32_t>(
-                    std::strtoul(idHex.substr(static_cast<size_t>(i) * 8, 8).c_str(), nullptr, 16));
-            }
-        }
-    }
+    info = CameraInfo(arch);
 }
 
 void ProtocolV1::readSensorId() {
     sendCommand(V1Opcode::SENSOR_ID, 4);
-    systemInfo.sensor_chip_id[0] = port_->read_le32();
+    info.setSensorChipId({port_->read_le32(), 0, 0});
 }
 
 void ProtocolV1::execScript(const std::string& script) {

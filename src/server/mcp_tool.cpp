@@ -7,7 +7,6 @@
 #include "camera.h"
 #include "camera_list/camera_list.h"
 #include "firmware.h"
-#include "license.h"
 
 namespace mcp {
 
@@ -41,8 +40,7 @@ static const McpTool TOOL_CAMERA_CONNECT = {
         auto cameraPath = args.at("cameraPath").get<std::string>();
         auto camera = Camera::create(cameraPath);
         auto& cam = ctx.addCamera(cameraPath, std::move(camera));
-        auto& si = cam.systemInfo;
-        std::thread([&si]() { si.licensed = licenseCheck(si.board_name, si.deviceIdHex()); }).detach();
+        std::thread([&cam]() { cam.info.checkLicense(); }).detach();
         McpContent resp;
         resp.addText(json({{"success", true}}));
         return resp;
@@ -68,37 +66,15 @@ static const McpTool TOOL_CAMERA_INFO = {
     CAMERA_PATH_SCHEMA,
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
         auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
-        const auto& si = cam.systemInfo;
-
-        auto id_buf = si.deviceIdHex();
-
-        const auto& board_type = si.board_type;
-        const auto& board_name = si.board_name;
-
-        char fw_buf[16];
-        std::snprintf(fw_buf, sizeof(fw_buf), "%d.%d.%d", si.fw_version[0], si.fw_version[1], si.fw_version[2]);
-
-        std::string sensor;
-        for (const auto& chip_id : si.sensor_chip_id) {
-            if (chip_id == 0) {
-                continue;
-            }
-            auto it = ALL_SENSORS_MAP.find(chip_id);
-            if (it != ALL_SENSORS_MAP.end()) {
-                if (!sensor.empty()) {
-                    sensor += ", ";
-                }
-                sensor += it->second;
-            }
-        }
+        const auto& si = cam.info;
 
         McpContent resp;
-        resp.addText(json({{"boardId", id_buf},
-                           {"boardType", board_type},
-                           {"name", board_name},
-                           {"sensor", sensor},
-                           {"fwVersion", fw_buf},
-                           {"protocolVersion", si.protocol_version}}));
+        resp.addText(json({{"boardId", si.deviceIdHex()},
+                           {"boardType", si.boardType()},
+                           {"name", si.boardName()},
+                           {"sensor", si.sensorString()},
+                           {"fwVersion", si.fwVersionString()},
+                           {"protocolVersion", si.protocolVersion()}}));
         return resp;
     },
 };
@@ -121,7 +97,7 @@ static const McpTool TOOL_SCRIPT_RUN = {
      {"required", json::array({"cameraPath", "script"})}},
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
         auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
-        if (!cam.systemInfo.licensed) {
+        if (!cam.info.licensed()) {
             throw std::runtime_error(
                 "Script execution failed: Unregistered OpenMV Cam detected. "
                 "You need to register your OpenMV Cam with OpenMV for unlimited use. "
@@ -228,7 +204,7 @@ static const McpTool TOOL_FIRMWARE_FLASH = {
     [](McpContext& ctx, const json& args, const std::atomic<bool>& cancelled) {
         auto cameraPath = args.at("cameraPath").get<std::string>();
         auto& cam = ctx.getCamera(cameraPath);
-        auto name = cam.systemInfo.board_name;
+        auto name = cam.info.boardName();
         if (name.empty()) {
             throw std::runtime_error("Camera board name is unknown; cannot determine firmware target");
         }
@@ -276,9 +252,7 @@ static const McpTool TOOL_LICENSE_REGISTER = {
      {"required", json::array({"cameraPath", "boardKey"})}},
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
         auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
-        auto& si = cam.systemInfo;
-        licenseRegister(si.board_name, si.deviceIdHex(), args.at("boardKey").get<std::string>());
-        si.licensed = true;
+        cam.info.registerLicense(args.at("boardKey").get<std::string>());
         McpContent resp;
         resp.addText(json({{"success", true}}));
         return resp;

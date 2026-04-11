@@ -201,34 +201,28 @@ void ProtocolV2::connect(std::shared_ptr<SerialPort> port) {
             }
         }
 
-        sendPacket({sequence_, 0, 0, Opcode::PROTO_VERSION, 0, {}});
-        auto ver_data = readResponse();
-        if (ver_data.size() >= 16) {
-            systemInfo.fw_version[0] = ver_data[6];
-            systemInfo.fw_version[1] = ver_data[7];
-            systemInfo.fw_version[2] = ver_data[8];
-        }
-
         sendPacket({sequence_, 0, 0, Opcode::SYS_INFO, 0, {}});
         auto info_data = readResponse();
         if (info_data.size() >= 76) {
             const uint8_t* p = info_data.data();
-            for (int i = 0; i < 3; i++)
-                std::memcpy(&systemInfo.device_id[i], p + 4 + (static_cast<ptrdiff_t>(i) * 4), 4);
             uint32_t usb_id;
             std::memcpy(&usb_id, p + 16, 4);
-            systemInfo.vid = static_cast<uint16_t>(usb_id >> 16);
-            systemInfo.pid = static_cast<uint16_t>(usb_id & 0xFFFF);
-            for (int i = 0; i < 3; i++)
-                std::memcpy(&systemInfo.sensor_chip_id[i], p + 20 + (static_cast<ptrdiff_t>(i) * 4), 4);
-            std::memcpy(&systemInfo.capabilities, p + 40, 4);
-            try {
-                auto board = findBoardByVidPid(systemInfo.vid, systemInfo.pid);
-                systemInfo.board_type = board.boardType;
-                systemInfo.board_name = board.name;
-            } catch (const std::runtime_error&) {
-                // Unknown board — leave board_type/board_name empty
-            }
+            info = CameraInfo(static_cast<uint16_t>(usb_id >> 16), static_cast<uint16_t>(usb_id & 0xFFFF));
+            std::array<uint32_t, 3> dev_ids = {};
+            for (int i = 0; i < 3; i++) std::memcpy(&dev_ids[i], p + 4 + (static_cast<ptrdiff_t>(i) * 4), 4);
+            info.setDeviceId(dev_ids);
+            std::array<uint32_t, 3> sensor_ids = {};
+            for (int i = 0; i < 3; i++) std::memcpy(&sensor_ids[i], p + 20 + (static_cast<ptrdiff_t>(i) * 4), 4);
+            info.setSensorChipId(sensor_ids);
+            uint32_t cap;
+            std::memcpy(&cap, p + 40, 4);
+            info.setCapabilities(cap);
+        }
+
+        sendPacket({sequence_, 0, 0, Opcode::PROTO_VERSION, 0, {}});
+        auto ver_data = readResponse();
+        if (ver_data.size() >= 16) {
+            info.setFwVersion(ver_data[6], ver_data[7], ver_data[8]);
         }
 
         // Stop any running script
@@ -236,7 +230,7 @@ void ProtocolV2::connect(std::shared_ptr<SerialPort> port) {
 
         enableFrame(true);
 
-        systemInfo.protocol_version = 2;
+        info.setProtocolVersion(2);
         startLoopThread();
     } catch (...) {
         disconnect();
