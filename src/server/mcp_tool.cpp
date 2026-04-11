@@ -1,6 +1,7 @@
 #include "server/mcp_tool.h"
 
 #include <atomic>
+#include <fstream>
 #include <thread>
 
 #include "board.h"
@@ -151,6 +152,38 @@ static const McpTool TOOL_SCRIPT_RUNNING = {
     },
 };
 
+static const McpTool TOOL_SCRIPT_SAVE = {
+    "script_save",
+    "Save a MicroPython script to main.py on the camera's USB drive so it runs on boot",
+    {{"type", "object"},
+     {"properties",
+      {{"cameraPath", {{"type", "string"}, {"description", "Serial port path of the camera"}}},
+       {"script", {{"type", "string"}, {"description", "MicroPython source code to save as main.py"}}}}},
+     {"required", json::array({"cameraPath", "script"})}},
+    [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
+        auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
+        auto drive = cam.info.drivePath();
+        if (drive.empty()) {
+            throw std::runtime_error(
+                "Script save failed: Camera USB drive not found. "
+                "Make sure the camera is connected and the USB drive is mounted.");
+        }
+        auto filepath = drive / "main.py";
+        std::ofstream ofs(filepath, std::ios::trunc);
+        if (!ofs) {
+            throw std::runtime_error("Script save failed: Cannot open " + filepath.string() + " for writing.");
+        }
+        ofs << args.at("script").get<std::string>();
+        ofs.close();
+        if (!ofs) {
+            throw std::runtime_error("Script save failed: Error writing to " + filepath.string());
+        }
+        McpContent resp;
+        resp.addText(json({{"success", true}, {"path", filepath.string()}}));
+        return resp;
+    },
+};
+
 static const McpTool TOOL_CAMERA_RESET = {
     "camera_reset",
     "Reset (reboot) the camera",
@@ -271,6 +304,7 @@ const std::vector<const McpTool*> ALL_MCP_TOOLS = {
     &TOOL_SCRIPT_STOP,
     &TOOL_SCRIPT_OUTPUT,
     &TOOL_SCRIPT_RUNNING,
+    &TOOL_SCRIPT_SAVE,
     &TOOL_FRAME_CAPTURE,
     &TOOL_FIRMWARE_FLASH,
     &TOOL_FIRMWARE_REPAIR,

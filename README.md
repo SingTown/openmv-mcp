@@ -29,6 +29,7 @@ npx @modelcontextprotocol/inspector --config mcp-inspector.json
 | `script_stop` | Stop currently running script |
 | `script_running` | Check if a script is running |
 | `script_output` | Read script output (stdout/stderr) |
+| `script_save` | Save a MicroPython script to main.py on the camera's USB drive |
 | `frame_capture` | Capture a frame as base64 JPEG |
 | `firmware_flash` | Flash firmware to the camera |
 | `firmware_repair` | Fully repair camera (bootloader + firmware) |

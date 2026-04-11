@@ -55,7 +55,7 @@ TEST_F(McpServerTest, UnknownMethod) {
 
 TEST_F(McpServerTest, ToolsList) {
     auto tools = client_->listTools();
-    EXPECT_EQ(tools.size(), 13U);
+    EXPECT_EQ(tools.size(), 14U);
 
     std::set<std::string> names;
     for (const auto& t : tools) names.insert(t.name);
@@ -69,6 +69,7 @@ TEST_F(McpServerTest, ToolsList) {
     EXPECT_TRUE(names.count("script_output"));
     EXPECT_TRUE(names.count("script_running"));
     EXPECT_TRUE(names.count("frame_capture"));
+    EXPECT_TRUE(names.count("script_save"));
     EXPECT_TRUE(names.count("firmware_flash"));
     EXPECT_TRUE(names.count("firmware_repair"));
 }
@@ -116,5 +117,11 @@ TEST_F(McpServerTest, ReadFrameNotConnected) {
 
 TEST_F(McpServerTest, CameraResetNotConnected) {
     auto result = client_->callTool("camera_reset", {{"cameraPath", "/dev/cu.nonexistent"}}).wait();
+    EXPECT_TRUE(result.is_error);
+}
+
+TEST_F(McpServerTest, ScriptSaveNotConnected) {
+    auto result =
+        client_->callTool("script_save", {{"cameraPath", "/dev/cu.nonexistent"}, {"script", "print('hello')"}}).wait();
     EXPECT_TRUE(result.is_error);
 }

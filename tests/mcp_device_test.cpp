@@ -1,5 +1,8 @@
 #include "mcp_device_test.h"
 
+#include <filesystem>
+#include <fstream>
+
 // =======================================================================
 // Device integration tests
 // =======================================================================
@@ -99,4 +102,30 @@ TEST_F(DeviceTest, StopScript) {
     }
     std::cout << "Output after stop: [" << after_stop << "]" << std::endl;
     EXPECT_EQ(after_stop.find("running"), std::string::npos);
+}
+
+TEST_F(DeviceTest, ScriptSave) {
+    // Get drive path from camera info
+    auto info_result = client_->callTool("camera_info", {{"cameraPath", camera_path_}}).wait();
+    ASSERT_FALSE(info_result.is_error);
+    auto info_data = json::parse(info_result.content[0].text);
+    auto drive_path = info_data["drivePath"].get<std::string>();
+    ASSERT_FALSE(drive_path.empty()) << "drivePath must not be empty for script_save test";
+
+    // Save a script to main.py
+    const std::string script = "# script_save test\nprint('saved_ok')\n";
+    auto result = client_->callTool("script_save", {{"cameraPath", camera_path_}, {"script", script}}).wait();
+    ASSERT_FALSE(result.is_error);
+    auto resp = json::parse(result.content[0].text);
+    EXPECT_TRUE(resp["success"].get<bool>());
+    EXPECT_FALSE(resp["path"].get<std::string>().empty());
+
+    // Verify file was actually written to disk
+    auto filepath = std::filesystem::path(drive_path) / "main.py";
+    ASSERT_TRUE(std::filesystem::exists(filepath)) << "main.py should exist on the USB drive";
+
+    std::ifstream ifs(filepath);
+    std::string content((std::istreambuf_iterator<char>(ifs)), std::istreambuf_iterator<char>());
+    EXPECT_EQ(content, script);
+    std::cout << "Saved main.py at: " << filepath << std::endl;
 }
