@@ -1,5 +1,6 @@
 #pragma once
 
+#include <filesystem>
 #include <string>
 #include <vector>
 
@@ -12,5 +13,8 @@ struct PortInfo {
 
 // List connected OpenMV cameras (filtered from all serial ports)
 std::vector<PortInfo> listCameras();
+
+// Find the USB mass-storage drive path for a given serial port path
+std::filesystem::path findDrivePath(const std::string& serialPath);
 
 }  // namespace mcp

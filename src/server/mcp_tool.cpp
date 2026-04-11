@@ -69,7 +69,9 @@ static const McpTool TOOL_CAMERA_INFO = {
         const auto& si = cam.info;
 
         McpContent resp;
-        resp.addText(json({{"boardId", si.deviceIdHex()},
+        resp.addText(json({{"cameraPath", si.cameraPath()},
+                           {"drivePath", si.drivePath().string()},
+                           {"boardId", si.deviceIdHex()},
                            {"boardType", si.boardType()},
                            {"name", si.boardName()},
                            {"sensor", si.sensorString()},

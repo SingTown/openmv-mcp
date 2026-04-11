@@ -110,6 +110,10 @@ std::vector<PortInfo> listCameras() {
     return result;
 }
 
+std::filesystem::path findDrivePath(const std::string& /*serialPath*/) {
+    return {};
+}
+
 }  // namespace mcp
 
 #endif  // _WIN32

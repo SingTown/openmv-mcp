@@ -9,6 +9,7 @@
 #include <stdexcept>
 
 #include "board.h"
+#include "camera_list/camera_list.h"
 
 namespace mcp {
 
@@ -99,6 +100,11 @@ void CameraInfo::setCapabilities(uint32_t cap) {
 
 void CameraInfo::setProtocolVersion(uint32_t ver) {
     protocol_version_ = ver;
+}
+
+void CameraInfo::setCameraPath(const std::string& path) {
+    camera_path_ = path;
+    drive_path_ = findDrivePath(path);
 }
 
 void CameraInfo::checkLicense() {

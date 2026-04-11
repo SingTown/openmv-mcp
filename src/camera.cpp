@@ -24,6 +24,7 @@ std::unique_ptr<Camera> Camera::create(const std::string& path) {
     }
     try {
         camera->connect(port);
+        camera->info.setCameraPath(path);
     } catch (...) {
         port->close();
         throw;

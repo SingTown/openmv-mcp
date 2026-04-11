@@ -8,6 +8,10 @@ std::vector<PortInfo> listCameras() {
     return {};
 }
 
+std::filesystem::path findDrivePath(const std::string& /*serialPath*/) {
+    return {};
+}
+
 }  // namespace mcp
 
 #endif  // __linux__

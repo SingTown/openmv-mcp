@@ -9,6 +9,11 @@ TEST_F(DeviceTest, ConnectAndInfo) {
     ASSERT_FALSE(result.is_error);
     auto info_data = json::parse(result.content[0].text);
     EXPECT_FALSE(info_data["fwVersion"].get<std::string>().empty());
+    EXPECT_TRUE(info_data.contains("cameraPath"));
+    EXPECT_TRUE(info_data.contains("drivePath"));
+    EXPECT_EQ(info_data["cameraPath"].get<std::string>(), camera_path_);
+    EXPECT_FALSE(info_data["drivePath"].get<std::string>().empty())
+        << "drivePath should not be empty for a connected camera";
     std::cout << "Camera info: " << info_data.dump(2) << std::endl;
 }
 
