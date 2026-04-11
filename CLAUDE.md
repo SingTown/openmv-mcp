@@ -25,6 +25,14 @@ winget install Kitware.CMake LLVM.LLVM ShiningLight.OpenSSL
 # restart terminal
 ```
 
+## Download Resources
+
+```bash
+curl -L -o /tmp/openmv-ide-resources.zip https://github.com/openmv/openmv-ide/releases/download/v4.8.9/openmv-ide-resources-4.8.9.zip
+unzip -o /tmp/openmv-ide-resources.zip -d resource
+rm /tmp/openmv-ide-resources.zip
+```
+
 ## Build & Run
 
 ```bash
