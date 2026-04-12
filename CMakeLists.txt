@@ -25,6 +25,7 @@ set(CORE_SOURCES
     src/serial_port/serial_port.cpp
     src/subprocess/subprocess.cpp
     src/resource.cpp
+    src/daemonize.cpp
 )
 
 if(APPLE)

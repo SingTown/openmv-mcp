@@ -69,6 +69,8 @@ This is an MCP (Model Context Protocol) server for controlling OpenMV cameras. I
 ### Command-Line Options
 
 - `--port, -p` — HTTP port (default: 15257)
+- `--daemon, -d` — fork to background (POSIX only; not supported on Windows)
+- `--log <path>` — redirect stdout/stderr in daemon mode (defaults to `/dev/null`)
 
 Resources (firmware, dfu-util/sdphost/blhost/stcubeprogrammer/mpy-cross for the
 host platform) are packaged into the binary at build time via CMakeRC and
@@ -89,4 +91,5 @@ extracted at runtime to `$TMPDIR/openmv-mcp-<crc>/` (idempotent across runs).
 - **Firmware**: `src/firmware.h/.cpp` — firmware flash and repair operations using subprocess-based flashing tools
 - **Info**: `src/info.h/.cpp` — system information and license management for OpenMV cameras
 - **Board**: `src/board.h/.cpp` — board/sensor database, USB device lookup, and firmware command definitions
+- **Daemonize**: `src/daemonize.h/.cpp` — POSIX background process fork with stdout/stderr redirection
 - **Utilities**: `src/utils/` — base64, CRC, ring buffer, UTF-8 buffer

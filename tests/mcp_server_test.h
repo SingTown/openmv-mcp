@@ -18,6 +18,7 @@ class McpServerTest : public ::testing::Test {
     static void SetUpTestSuite() {
         mcp::extractEmbeddedResource();
         server_ = std::make_unique<mcp::McpServer>(kPort);
+        ASSERT_TRUE(server_->bind()) << "Failed to bind test port " << kPort;
         server_thread_ = std::thread([]() { server_->start(); });
         client_ = std::make_unique<mcp::McpClient>("127.0.0.1", kPort);
         for (int i = 0; i < 100; ++i) {

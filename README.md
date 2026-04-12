@@ -5,9 +5,20 @@ An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server for c
 ## Run
 
 ```bash
-./build/openmv_mcp_server              # default port 15257
-./build/openmv_mcp_server --port 9000  # custom port
+openmv_mcp_server              # default port 15257
+openmv_mcp_server --port 9000  # custom port
 ```
+
+### Daemon mode (POSIX)
+
+Run detached from the terminal so the server keeps running after the shell closes:
+
+```bash
+openmv_mcp_server --daemon --log /tmp/openmv.log
+kill $(lsof -i :15257 -t)   # stop
+```
+
+Flags: `--daemon, -d` (fork to background), `--log <path>` (redirect stdout/stderr; defaults to `/dev/null`). Not supported on Windows.
 
 ## MCP Inspector
 

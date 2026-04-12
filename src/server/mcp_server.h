@@ -17,10 +17,12 @@ class McpServer {
     McpServer(const McpServer&) = delete;
     McpServer& operator=(const McpServer&) = delete;
 
+    bool bind();
     void start();
     void stop();
 
  private:
+    void setupRoutes();
     void setupWebSocket();
     json handleRequest(const json& request);
     static json handleInitialize(const json& id);

@@ -114,7 +114,7 @@ void McpServer::setupWebSocket() {
     });
 }
 
-void McpServer::start() {
+void McpServer::setupRoutes() {
     setupWebSocket();
 
     server_.Post("/mcp", [this](const httplib::Request& req, httplib::Response& res) {
@@ -171,9 +171,20 @@ void McpServer::start() {
     server_.Get("/health", [](const httplib::Request&, httplib::Response& res) {
         res.set_content(R"({"status":"ok"})", "application/json");
     });
+}
 
+bool McpServer::bind() {
+    setupRoutes();
+    server_.set_socket_options([](socket_t sock) {
+        int yes = 1;
+        ::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&yes), sizeof(yes));
+    });
+    return server_.bind_to_port("127.0.0.1", port_);
+}
+
+void McpServer::start() {
     std::cout << "MCP Server listening on port " << port_ << '\n';
-    server_.listen("127.0.0.1", port_);
+    server_.listen_after_bind();
     ctx_.reset();
 }
 
