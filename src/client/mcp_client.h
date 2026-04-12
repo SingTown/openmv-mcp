@@ -66,7 +66,7 @@ class McpClient {
  public:
     explicit McpClient(const std::string& host, int port);
 
-    void initialize();
+    json initialize();
     std::vector<ToolInfo> listTools();
     ToolResponse callTool(const std::string& name, const json& args = json::object());
     void cancelTool(int requestId);

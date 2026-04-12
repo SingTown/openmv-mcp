@@ -65,12 +65,13 @@ McpClient::McpClient(const std::string& host, int port) : host_(host), port_(por
     client_.set_read_timeout(30);
 }
 
-void McpClient::initialize() {
-    sendRequest("initialize",
-                {{"protocolVersion", "2025-03-26"},
-                 {"capabilities", json::object()},
-                 {"clientInfo", {{"name", "mcp-test-client"}, {"version", OPENMV_MCP_VERSION}}}});
+json McpClient::initialize() {
+    auto result = sendRequest("initialize",
+                              {{"protocolVersion", "2025-03-26"},
+                               {"capabilities", json::object()},
+                               {"clientInfo", {{"name", "mcp-test-client"}, {"version", OPENMV_MCP_VERSION}}}});
     sendNotification("notifications/initialized");
+    return result;
 }
 
 std::vector<ToolInfo> McpClient::listTools() {

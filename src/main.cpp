@@ -4,11 +4,22 @@
 #include <iostream>
 #include <string>
 
+#include "client/mcp_client.h"
 #include "daemonize.h"
 #include "resource.h"
 #include "server/mcp_server.h"
 
 static std::atomic<mcp::McpServer*> g_server{nullptr};
+
+static bool isOpenmvMcpOnPort(int port) {
+    try {
+        mcp::McpClient client("127.0.0.1", port);
+        auto info = client.initialize();
+        return info.value("serverInfo", mcp::json::object()).value("name", "") == "openmv-mcp-server";
+    } catch (const std::exception&) {
+        return false;
+    }
+}
 
 static void signalHandler(int /*sig*/) {
     if (auto* s = g_server.load(std::memory_order_acquire)) {
@@ -55,6 +66,10 @@ int main(int argc, char* argv[]) {
 
     mcp::McpServer server(port);
     if (!server.bind()) {
+        if (isOpenmvMcpOnPort(port)) {
+            std::cout << "openmv-mcp server already running on port " << port << '\n';
+            return 0;
+        }
         std::cerr << "Failed to bind port " << port << " (already in use?)\n";
         return 1;
     }
