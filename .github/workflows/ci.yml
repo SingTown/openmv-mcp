@@ -10,7 +10,7 @@ jobs:
   build-macos:
     runs-on: macos-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: true
 
@@ -35,7 +35,7 @@ jobs:
         run: ctest --test-dir build --output-on-failure
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: openmv_mcp_server-macos
           path: build/openmv_mcp_server
@@ -43,7 +43,7 @@ jobs:
   build-windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: true
 
@@ -63,7 +63,7 @@ jobs:
         run: ctest --test-dir build --output-on-failure -C Release
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: openmv_mcp_server-windows
           path: build/Release/openmv_mcp_server.exe
