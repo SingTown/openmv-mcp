@@ -7,6 +7,7 @@ An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server for c
 ```bash
 openmv_mcp_server              # default port 15257
 openmv_mcp_server --port 9000  # custom port
+openmv_mcp_server --version    # print version and exit
 ```
 
 ### Daemon mode (POSIX)

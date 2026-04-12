@@ -231,7 +231,7 @@ json McpServer::handleInitialize(const json& id) {
     return makeResponse(id,
                         {{"protocolVersion", "2025-03-26"},
                          {"capabilities", {{"tools", json::object()}}},
-                         {"serverInfo", {{"name", "openmv-mcp-server"}, {"version", "1.0.0"}}}});
+                         {"serverInfo", {{"name", "openmv-mcp-server"}, {"version", OPENMV_MCP_VERSION}}}});
 }
 
 json McpServer::handleToolsList(const json& id) {

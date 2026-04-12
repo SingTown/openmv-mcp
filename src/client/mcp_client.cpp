@@ -69,7 +69,7 @@ void McpClient::initialize() {
     sendRequest("initialize",
                 {{"protocolVersion", "2025-03-26"},
                  {"capabilities", json::object()},
-                 {"clientInfo", {{"name", "mcp-test-client"}, {"version", "1.0.0"}}}});
+                 {"clientInfo", {{"name", "mcp-test-client"}, {"version", OPENMV_MCP_VERSION}}}});
     sendNotification("notifications/initialized");
 }
 

@@ -34,11 +34,19 @@ int main(int argc, char* argv[]) {
             daemon_mode = true;
         } else if (arg == "--log" && i + 1 < argc) {
             log_path = argv[++i];
+        } else if (arg == "--version" || arg == "-v") {
+#ifdef OPENMV_MCP_VERSION
+            std::cout << OPENMV_MCP_VERSION << '\n';
+#else
+            std::cout << "unknown\n";
+#endif
+            return 0;
         } else if (arg == "--help" || arg == "-h") {
             std::cout << "Usage: openmv_mcp_server [OPTIONS]\n"
                       << "  --port, -p <port>  HTTP port (default: 15257)\n"
                       << "  --daemon, -d       Run in background (POSIX only)\n"
-                      << "  --log <path>       Redirect stdout/stderr to file in daemon mode\n";
+                      << "  --log <path>       Redirect stdout/stderr to file in daemon mode\n"
+                      << "  --version, -v      Print version and exit\n";
             return 0;
         }
     }
