@@ -10,3 +10,9 @@
 	path = 3rdparty/stb
 	url = https://github.com/nothings/stb.git
 	shallow = true
+[submodule "3rdparty/cmrc"]
+	path = 3rdparty/cmrc
+	url = https://github.com/vector-of-bool/cmrc.git
+[submodule "3rdparty/miniz"]
+	path = 3rdparty/miniz
+	url = https://github.com/richgel999/miniz.git

@@ -43,9 +43,6 @@ inline Board findBoardByName(const std::string& name) {
     throw std::runtime_error("Unknown board: " + name);
 }
 
-void setResourcePath(const std::filesystem::path& path);
-const std::filesystem::path& resourcePath();
-
 extern const std::map<uint32_t, std::string> ALL_SENSORS_MAP;
 
 }  // namespace mcp

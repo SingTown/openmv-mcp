@@ -36,13 +36,14 @@ rm /tmp/openmv-ide-resources.zip
 ## Build & Run
 
 ```bash
-# First time: git submodule update --init
+# First time: git submodule update --init --recursive
 cmake -B build
 cmake --build build
 
-# Run server (default port 15257)
-./build/openmv_mcp_server --resource-path resource
-./build/openmv_mcp_server --resource-path resource --port 9000
+# Run server (default port 15257). Resources are embedded in the binary
+# and extracted to a temp directory on first launch.
+./build/openmv_mcp_server
+./build/openmv_mcp_server --port 9000
 ```
 
 ## Test
@@ -67,8 +68,11 @@ This is an MCP (Model Context Protocol) server for controlling OpenMV cameras. I
 
 ### Command-Line Options
 
-- `--resource-path, -r` — path to the resource directory containing firmware files and flashing tools (dfu-util, sdphost, blhost) (default: `resource`)
 - `--port, -p` — HTTP port (default: 15257)
+
+Resources (firmware, dfu-util/sdphost/blhost/stcubeprogrammer/mpy-cross for the
+host platform) are packaged into the binary at build time via CMakeRC and
+extracted at runtime to `$TMPDIR/openmv-mcp-<crc>/` (idempotent across runs).
 
 ### Core Modules
 

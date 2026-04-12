@@ -1,24 +1,12 @@
 #include "board.h"
 
 #include <filesystem>
-#include <stdexcept>
+
+#include "resource.h"
 
 namespace mcp {
 
 namespace fs = std::filesystem;
-
-static fs::path g_resourcePath;
-
-void setResourcePath(const fs::path& path) {
-    if (!fs::is_directory(path)) {
-        throw std::runtime_error("Resource path does not exist: " + path.string());
-    }
-    g_resourcePath = fs::absolute(path);
-}
-
-const fs::path& resourcePath() {
-    return g_resourcePath;
-}
 
 // clang-format off
 static std::vector<Board> createAllBoards() {

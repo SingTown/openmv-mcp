@@ -5,6 +5,7 @@
 #include <thread>
 
 #include "board.h"
+#include "resource.h"
 #include "subprocess/subprocess.h"
 
 namespace mcp {

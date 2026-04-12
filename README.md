@@ -5,8 +5,8 @@ An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server for c
 ## Run
 
 ```bash
-./build/openmv_mcp_server --resource-path resource              # default port 15257
-./build/openmv_mcp_server --resource-path resource --port 9000  # custom port
+./build/openmv_mcp_server              # default port 15257
+./build/openmv_mcp_server --port 9000  # custom port
 ```
 
 ## MCP Inspector

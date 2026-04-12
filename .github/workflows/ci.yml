@@ -17,6 +17,11 @@ jobs:
       - name: Install tools
         run: brew install clang-format
 
+      - name: Download resources
+        run: |
+          curl -L -o /tmp/openmv-ide-resources.zip https://github.com/openmv/openmv-ide/releases/download/v4.8.9/openmv-ide-resources-4.8.9.zip
+          unzip -o /tmp/openmv-ide-resources.zip -d resource
+
       - name: Configure
         run: cmake -B build
 
@@ -29,6 +34,12 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure
 
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openmv_mcp_server-macos
+          path: build/openmv_mcp_server
+
   build-windows:
     runs-on: windows-latest
     steps:
@@ -36,11 +47,23 @@ jobs:
         with:
           submodules: true
 
+      - name: Download resources
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri https://github.com/openmv/openmv-ide/releases/download/v4.8.9/openmv-ide-resources-4.8.9.zip -OutFile $env:TEMP\openmv-ide-resources.zip
+          Expand-Archive -Path $env:TEMP\openmv-ide-resources.zip -DestinationPath resource -Force
+
       - name: Configure
-        run: cmake -B build
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: cmake --build build
+        run: cmake --build build --config Release
 
       - name: Test
-        run: ctest --test-dir build --output-on-failure
+        run: ctest --test-dir build --output-on-failure -C Release
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: openmv_mcp_server-windows
+          path: build/Release/openmv_mcp_server.exe
