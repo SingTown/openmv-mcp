@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0](https://github.com/SingTown/openmv-mcp/compare/v1.0.0...v1.1.0) (2026-04-12)
+
+
+### Features
+
+* exit 0 when port is already bound by an openmv-mcp server ([20f02a7](https://github.com/SingTown/openmv-mcp/commit/20f02a72d856b580c5d69fd0bd39473ca4ab24de))
+
 ## 1.0.0 (2026-04-12)
 
 
