@@ -65,7 +65,7 @@ if(APPLE)
 elseif(UNIX)
     list(APPEND COMMON_LIBS udev)
 elseif(WIN32)
-    list(APPEND COMMON_LIBS setupapi)
+    list(APPEND COMMON_LIBS setupapi cfgmgr32)
 endif()
 
 # --- Embedded resource (zip packaged into the binary via CMakeRC) ---
