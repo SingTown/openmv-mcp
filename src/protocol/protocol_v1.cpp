@@ -114,7 +114,10 @@ void ProtocolV1::boot() {
 
 void ProtocolV1::readFwVersion() {
     sendCommand(V1Opcode::FW_VERSION, 12);
-    info.setFwVersion(port_->read_le32(), port_->read_le32(), port_->read_le32());
+    uint32_t major = port_->read_le32();
+    uint32_t minor = port_->read_le32();
+    uint32_t patch = port_->read_le32();
+    info.setFwVersion(major, minor, patch);
 }
 
 void ProtocolV1::readArchStr() {
@@ -213,22 +216,13 @@ void ProtocolV1::poll() {
             }
 
             try {
-                // Read frame in chunks — Windows CDC driver can't deliver large reads
-                constexpr uint32_t kChunkSize = 4096;
-                std::vector<uint8_t> frame_data;
-                frame_data.reserve(size);
-                uint32_t remaining = size;
-                while (remaining > 0) {
-                    uint32_t chunk = remaining < kChunkSize ? remaining : kChunkSize;
-                    sendCommand(V1Opcode::FRAME_DUMP, chunk);
-                    auto chunk_data = port_->read_bytes(chunk);
-                    frame_data.insert(frame_data.end(), chunk_data.begin(), chunk_data.end());
-                    remaining -= chunk;
-                }
-                setFrame(Frame(w, h, pixformat, std::move(frame_data)));
-            } catch (...) {
+                sendCommand(V1Opcode::FRAME_DUMP, size);
+                auto data = port_->read_bytes(size);
+                setFrame(Frame(w, h, pixformat, std::move(data)));
+            } catch (const std::exception& e) {
                 // Frame read failed — purge stale data and skip this frame
                 // Don't rethrow: keep the poll loop alive
+                spdlog::warn("[proto-v1] frame dump failed: {}", e.what());
                 port_->purge();
             }
         }

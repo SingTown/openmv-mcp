@@ -40,6 +40,8 @@ class SerialPort {
 
 #ifdef _WIN32
     void* handle_ = reinterpret_cast<void*>(-1);  // INVALID_HANDLE_VALUE
+    void* read_event_ = nullptr;
+    void* write_event_ = nullptr;
 #else
     int fd_ = -1;
 #endif

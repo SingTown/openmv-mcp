@@ -14,6 +14,8 @@
 
 namespace mcp {
 
+static constexpr DWORD kCommBufSize = 64 * 1024 * 1024;
+
 static bool set_baud_rate(HANDLE h, DWORD baud) {
     DCB dcb{};
     dcb.DCBlength = sizeof(dcb);
@@ -35,12 +37,21 @@ bool SerialPort::open(const std::string& path) {
         dev_path = "\\\\.\\" + path;
     }
 
-    HANDLE h = CreateFileA(dev_path.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, 0, nullptr);
+    HANDLE h = CreateFileA(
+        dev_path.c_str(), GENERIC_READ | GENERIC_WRITE, 0, nullptr, OPEN_EXISTING, FILE_FLAG_OVERLAPPED, nullptr);
     if (h == INVALID_HANDLE_VALUE) return false;
     handle_ = h;
 
-    // Set large driver-level buffers for frame data transfer (matches OpenMV IDE)
-    SetupComm(h, 1024 * 1024, 1024 * 1024);
+    // Create manual-reset events for overlapped I/O
+    read_event_ = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+    write_event_ = CreateEvent(nullptr, TRUE, FALSE, nullptr);
+    if (!read_event_ || !write_event_) {
+        close();
+        return false;
+    }
+
+    // Set large driver-level buffers for frame data transfer (matches OpenMV IDE: 64MB)
+    SetupComm(h, kCommBufSize, kCommBufSize);
 
     // Configure DCB: 8N1, no flow control, DTR enabled
     DCB dcb{};
@@ -75,19 +86,19 @@ bool SerialPort::open(const std::string& path) {
         return false;
     }
 
-    // Non-blocking read (VMIN=0, VTIME=0 equivalent)
+    // Timeouts: return immediately if data in buffer, or wait up to 10ms
     COMMTIMEOUTS timeouts{};
     timeouts.ReadIntervalTimeout = MAXDWORD;
-    timeouts.ReadTotalTimeoutMultiplier = 0;
-    timeouts.ReadTotalTimeoutConstant = 0;
+    timeouts.ReadTotalTimeoutMultiplier = MAXDWORD;
+    timeouts.ReadTotalTimeoutConstant = 10;
     timeouts.WriteTotalTimeoutMultiplier = 0;
-    timeouts.WriteTotalTimeoutConstant = 0;
+    timeouts.WriteTotalTimeoutConstant = 3000;
     if (!SetCommTimeouts(h, &timeouts)) {
         close();
         return false;
     }
 
-    // Purge buffers (equivalent to tcflush)
+    // Purge buffers
     PurgeComm(h, PURGE_RXCLEAR | PURGE_TXCLEAR);
 
     return true;
@@ -96,9 +107,18 @@ bool SerialPort::open(const std::string& path) {
 void SerialPort::close() {
     if (handle_ != INVALID_HANDLE_VALUE) {
         auto h = static_cast<HANDLE>(handle_);
+        CancelIo(h);
         PurgeComm(h, PURGE_RXCLEAR | PURGE_TXCLEAR);
         CloseHandle(h);
         handle_ = INVALID_HANDLE_VALUE;
+    }
+    if (read_event_) {
+        CloseHandle(static_cast<HANDLE>(read_event_));
+        read_event_ = nullptr;
+    }
+    if (write_event_) {
+        CloseHandle(static_cast<HANDLE>(write_event_));
+        write_event_ = nullptr;
     }
     write_buf_.clear();
     recv_buf_.clear();
@@ -106,7 +126,9 @@ void SerialPort::close() {
 
 void SerialPort::purge() {
     if (handle_ != INVALID_HANDLE_VALUE) {
-        PurgeComm(static_cast<HANDLE>(handle_), PURGE_RXCLEAR | PURGE_TXCLEAR);
+        auto h = static_cast<HANDLE>(handle_);
+        CancelIo(h);
+        PurgeComm(h, PURGE_RXCLEAR | PURGE_TXCLEAR);
     }
     recv_buf_.clear();
 }
@@ -127,16 +149,28 @@ bool SerialPort::send() {
                   spdlog::to_hex(write_buf_.data(), write_buf_.data() + std::min(total, size_t{64})));
     size_t written = 0;
     while (written < total) {
-        DWORD n = 0;
+        OVERLAPPED ov{};
+        ov.hEvent = static_cast<HANDLE>(write_event_);
+        ResetEvent(ov.hEvent);
+
         auto remaining = static_cast<DWORD>(total - written);
-        if (!WriteFile(h, write_buf_.data() + written, remaining, &n, nullptr)) {
-            spdlog::error("[serial] TX write error");
+        DWORD n = 0;
+        BOOL ok = WriteFile(h, write_buf_.data() + written, remaining, nullptr, &ov);
+        if (!ok && GetLastError() != ERROR_IO_PENDING) {
+            write_buf_.clear();
+            return false;
+        }
+        // Always use GetOverlappedResult for overlapped I/O
+        if (!GetOverlappedResult(h, &ov, &n, TRUE)) {
+            write_buf_.clear();
+            return false;
+        }
+        if (n == 0) {
             write_buf_.clear();
             return false;
         }
         written += n;
     }
-    FlushFileBuffers(h);
     write_buf_.clear();
     return true;
 }
@@ -145,18 +179,18 @@ bool SerialPort::recv() {
     if (handle_ == INVALID_HANDLE_VALUE) return false;
     auto h = static_cast<HANDLE>(handle_);
 
-    DWORD errors = 0;
-    COMSTAT comstat{};
-    if (!ClearCommError(h, &errors, &comstat)) return false;
-    if (comstat.cbInQue == 0) {
-        Sleep(1);
-        return false;
-    }
+    OVERLAPPED ov{};
+    ov.hEvent = static_cast<HANDLE>(read_event_);
+    ResetEvent(ov.hEvent);
 
     uint8_t buf[4096];
-    DWORD to_read = comstat.cbInQue < sizeof(buf) ? comstat.cbInQue : sizeof(buf);
     DWORD bytes_read = 0;
-    if (!ReadFile(h, buf, to_read, &bytes_read, nullptr)) return false;
+    BOOL ok = ReadFile(h, buf, sizeof(buf), nullptr, &ov);
+    if (!ok && GetLastError() != ERROR_IO_PENDING) return false;
+
+    // Wait for completion (bounded by COMMTIMEOUTS: ~10ms)
+    if (!GetOverlappedResult(h, &ov, &bytes_read, TRUE)) return false;
+
     if (bytes_read > 0) {
         spdlog::debug("[serial] RX {}: {:spn}", bytes_read, spdlog::to_hex(buf, buf + std::min<DWORD>(bytes_read, 64)));
         recv_buf_.push_back(buf, bytes_read);
