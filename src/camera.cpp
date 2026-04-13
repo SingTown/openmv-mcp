@@ -82,6 +82,7 @@ void Camera::removeCallback(CallbackId id) {
 void Camera::updateConnected(bool connected) {
     bool prev = connected_.exchange(connected);
     if (prev != connected) {
+        spdlog::info("Camera {}", connected ? "connected" : "disconnected");
         std::vector<ConnectedCallback> cbs;
         {
             std::lock_guard<std::mutex> lock(callback_mutex_);
@@ -99,6 +100,7 @@ void Camera::updateConnected(bool connected) {
 void Camera::updateScript(bool running) {
     bool prev = script_running_.exchange(running);
     if (prev != running) {
+        spdlog::info("Script {}", running ? "running" : "stopped");
         std::vector<ScriptCallback> cbs;
         {
             std::lock_guard<std::mutex> lock(callback_mutex_);

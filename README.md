@@ -63,7 +63,7 @@ Real-time push endpoints for live monitoring:
 
 | Endpoint | Data | Format |
 |---|---|---|
-| `/ws/script?camera=<path>` | Script running status | JSON |
+| `/ws/status?camera=<path>` | Connection & script running status | JSON |
 | `/ws/terminal?camera=<path>` | Terminal output | Text |
 | `/ws/frame-stream?camera=<path>` | Frame buffer | Binary JPEG |
 

@@ -13,23 +13,31 @@ McpServer::~McpServer() {
 }
 
 void McpServer::setupWebSocket() {
-    server_.WebSocket("/ws/script", [this](const httplib::Request& req, httplib::ws::WebSocket& ws) {
+    server_.WebSocket("/ws/status", [this](const httplib::Request& req, httplib::ws::WebSocket& ws) {
         auto camera_path = req.get_param_value("camera");
         try {
             auto& cam = ctx_->getCamera(camera_path);
             auto ws_active = std::make_shared<std::atomic<bool>>(true);
 
-            json status = {{"script_running", cam.scriptRunning()}};
+            json status = {{"connected", cam.isConnected()}, {"script_running", cam.scriptRunning()}};
             ws.send(status.dump());
 
             auto dc_id = cam.onConnected([&ws, ws_active](bool connected) {
-                if (!ws_active->load()) return;
-                if (!connected && ws.is_open()) {
-                    ws.close();
+                if (!ws_active->load()) {
+                    return;
+                }
+                if (ws.is_open()) {
+                    json s = {{"connected", connected}};
+                    if (!connected) {
+                        s["script_running"] = false;
+                    }
+                    ws.send(s.dump());
                 }
             });
             auto cb_id = cam.onScript([&ws, ws_active](bool running) {
-                if (!ws_active->load()) return;
+                if (!ws_active->load()) {
+                    return;
+                }
                 if (ws.is_open()) {
                     json s = {{"script_running", running}};
                     ws.send(s.dump());

@@ -4,12 +4,13 @@
 // WebSocket integration tests
 // =======================================================================
 
-TEST_F(DeviceTest, WebSocketScriptStatus) {
-    WsReader reader("ws://127.0.0.1:" + std::to_string(kPort) + "/ws/script?camera=" + camera_path_);
+TEST_F(DeviceTest, WebSocketStatus) {
+    WsReader reader("ws://127.0.0.1:" + std::to_string(kPort) + "/ws/status?camera=" + camera_path_);
     ASSERT_TRUE(reader.start()) << "WebSocket connect failed";
 
-    EXPECT_TRUE(reader.waitForJson([](const json& j) { return j.contains("script_running"); }))
-        << "Did not receive initial script status";
+    EXPECT_TRUE(reader.waitForJson([](const json& j) {
+        return j.contains("connected") && j.contains("script_running");
+    })) << "Did not receive initial status";
 
     client_
         ->callTool("script_run",
