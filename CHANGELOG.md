@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.2.0](https://github.com/SingTown/openmv-mcp/compare/v1.1.0...v1.2.0) (2026-04-13)
+
+
+### Features
+
+* add Windows daemon mode via CreateProcess detached respawn ([ee12bcb](https://github.com/SingTown/openmv-mcp/commit/ee12bcb8e700edf40e85ead80819259ab2ed83d2))
+* integrate spdlog for structured logging ([71abefe](https://github.com/SingTown/openmv-mcp/commit/71abefe3d8d5fe10aac51d342cbdc06aa236da50))
+
 ## [1.1.0](https://github.com/SingTown/openmv-mcp/compare/v1.0.0...v1.1.0) (2026-04-12)
 
 
