@@ -42,7 +42,7 @@ npx @modelcontextprotocol/inspector --config mcp-inspector.json
 
 | Tool | Description |
 |---|---|
-| `camera_list` | List all connected OpenMV cameras |
+| `camera_list` | List OpenMV cameras with their connection state |
 | `camera_connect` | Connect to a camera by serial port path |
 | `camera_disconnect` | Disconnect from a camera |
 | `camera_reset` | Reset (reboot) the camera |

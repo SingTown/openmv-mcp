@@ -19,13 +19,13 @@ static const json CAMERA_PATH_SCHEMA = {
 
 static const McpTool TOOL_CAMERA_LIST = {
     "camera_list",
-    "List connected OpenMV cameras",
+    "List OpenMV cameras with their connection state",
     {{"type", "object"}, {"properties", json::object()}, {"required", json::array()}},
-    [](McpContext& /*ctx*/, const json& /*args*/, const std::atomic<bool>& /*cancelled*/) {
+    [](McpContext& ctx, const json& /*args*/, const std::atomic<bool>& /*cancelled*/) {
         auto cams = listCameras();
         json result = json::array();
         for (const auto& cam : cams) {
-            result.push_back({{"path", cam.path}, {"name", cam.name}});
+            result.push_back({{"path", cam.path}, {"name", cam.name}, {"connected", ctx.hasCamera(cam.path)}});
         }
         McpContent resp;
         resp.addText(result);

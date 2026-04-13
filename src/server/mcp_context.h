@@ -44,6 +44,8 @@ class McpContext {
         return *it->second;
     }
 
+    [[nodiscard]] bool hasCamera(const std::string& path) const { return cameras_.contains(path); }
+
     Camera& addCamera(const std::string& path, std::unique_ptr<Camera> camera) {
         if (cameras_.count(path) != 0) {
             throw std::runtime_error("Camera already connected: " + path);
