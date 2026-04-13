@@ -10,16 +10,25 @@ openmv_mcp_server --port 9000  # custom port
 openmv_mcp_server --version    # print version and exit
 ```
 
-### Daemon mode (POSIX)
+### Daemon mode
 
 Run detached from the terminal so the server keeps running after the shell closes:
 
 ```bash
 openmv_mcp_server --daemon --log /tmp/openmv.log
-kill $(lsof -i :15257 -t)   # stop
 ```
 
-Flags: `--daemon, -d` (fork to background), `--log <path>` (redirect stdout/stderr; defaults to `/dev/null`). Not supported on Windows.
+Stop a running server:
+
+```bash
+# Linux / macOS
+kill $(lsof -i :15257 -t)
+
+# Windows
+for /f "tokens=5" %a in ('netstat -ano ^| findstr :15257 ^| findstr LISTENING') do taskkill /PID %a /F
+```
+
+Flags: `--daemon, -d` (fork to background), `--log <path>` (redirect stdout/stderr; defaults to `/dev/null` or `NUL`).
 
 ## MCP Inspector
 

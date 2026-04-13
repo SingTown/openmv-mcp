@@ -176,8 +176,10 @@ void McpServer::setupRoutes() {
 bool McpServer::bind() {
     setupRoutes();
     server_.set_socket_options([](socket_t sock) {
+#ifndef _WIN32
         int yes = 1;
         ::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&yes), sizeof(yes));
+#endif
     });
     return server_.bind_to_port("127.0.0.1", port_);
 }

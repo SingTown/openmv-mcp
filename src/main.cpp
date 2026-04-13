@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
         } else if (arg == "--help" || arg == "-h") {
             std::cout << "Usage: openmv_mcp_server [OPTIONS]\n"
                       << "  --port, -p <port>  HTTP port (default: 15257)\n"
-                      << "  --daemon, -d       Run in background (POSIX only)\n"
+                      << "  --daemon, -d       Run in background\n"
                       << "  --log <path>       Redirect stdout/stderr to file in daemon mode\n"
                       << "  --version, -v      Print version and exit\n";
             return 0;
@@ -76,7 +76,7 @@ int main(int argc, char* argv[]) {
 
     if (daemon_mode) {
         try {
-            mcp::daemonize(log_path);
+            mcp::daemonize(argc, argv, log_path);
         } catch (const std::exception& e) {
             std::cerr << "daemonize failed: " << e.what() << '\n';
             return 1;

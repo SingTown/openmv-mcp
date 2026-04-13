@@ -20,7 +20,7 @@ sudo apt install cmake clang-tidy clang-format libssl-dev
 ### Windows
 
 ```powershell
-winget install Kitware.CMake LLVM.LLVM ShiningLight.OpenSSL
+winget install Kitware.CMake LLVM.LLVM ShiningLight.OpenSSL.Dev
 [Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\Program Files\LLVM\bin", "Machine")
 # restart terminal
 ```
