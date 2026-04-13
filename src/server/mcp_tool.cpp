@@ -77,6 +77,7 @@ static const McpTool TOOL_CAMERA_INFO = {
                            {"name", si.boardName()},
                            {"sensor", si.sensorString()},
                            {"fwVersion", si.fwVersionString()},
+                           {"latestFwVersion", latestFirmwareVersion()},
                            {"protocolVersion", si.protocolVersion()}}));
         return resp;
     },

@@ -19,4 +19,6 @@ void firmwareFlash(const std::string& name,
                    const MessageCallback& onDebug,
                    const std::atomic<bool>& cancelled);
 
+std::string latestFirmwareVersion();
+
 }  // namespace mcp

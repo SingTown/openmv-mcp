@@ -2,6 +2,9 @@
 
 #include <chrono>
 #include <filesystem>
+#include <fstream>
+#include <mutex>
+#include <nlohmann/json.hpp>
 #include <thread>
 
 #include "board.h"
@@ -98,6 +101,32 @@ void firmwareFlash(const std::string& name,
     }
     auto dir = firmwareDir.empty() ? board.firmwareDir : firmwareDir;
     Subprocess(board.firmwareCommands, resolveFirmwareDir(dir), onDebug, cancelled).join();
+}
+
+std::string latestFirmwareVersion() {
+    static std::mutex mutex;
+    static std::string cached;
+    std::lock_guard<std::mutex> lock(mutex);
+    if (!cached.empty()) {
+        return cached;
+    }
+    if (resourcePath().empty()) {
+        return {};
+    }
+    std::ifstream in(resourcePath() / "firmware" / "settings.json");
+    if (!in) {
+        return {};
+    }
+    auto j = nlohmann::json::parse(in, nullptr, false);
+    if (j.is_discarded()) {
+        return {};
+    }
+    auto it = j.find("firmware_version");
+    if (it == j.end() || !it->is_string()) {
+        return {};
+    }
+    cached = it->get<std::string>();
+    return cached;
 }
 
 }  // namespace mcp
