@@ -127,6 +127,7 @@ void McpServer::setupRoutes() {
     setupWebSocket();
 
     server_.Post("/mcp", [this](const httplib::Request& req, httplib::Response& res) {
+        spdlog::debug("HTTP POST /mcp request: {}", req.body);
         try {
             auto request = json::parse(req.body);
             auto method = request.value("method", "");
@@ -146,12 +147,16 @@ void McpServer::setupRoutes() {
                         ctx_->stream = &sink.os;
                         try {
                             auto resp = tool->handler(*ctx_, args, *cancelled);
-                            writeStreamEvent(sink.os, makeResponse(id, {{"content", resp.toContent()}}));
+                            auto payload = makeResponse(id, {{"content", resp.toContent()}});
+                            spdlog::debug("HTTP POST /mcp stream response: {}", payload.dump());
+                            writeStreamEvent(sink.os, payload);
                         } catch (const std::exception& e) {
+                            spdlog::error("tool '{}' threw: {}", tool->name, e.what());
                             McpContent err;
                             err.addText(json({{"error", std::string(e.what())}}));
-                            writeStreamEvent(sink.os,
-                                             makeResponse(id, {{"content", err.toContent()}, {"isError", true}}));
+                            auto payload = makeResponse(id, {{"content", err.toContent()}, {"isError", true}});
+                            spdlog::debug("HTTP POST /mcp stream response: {}", payload.dump());
+                            writeStreamEvent(sink.os, payload);
                         }
                         ctx_->stream = nullptr;
                         ctx_->unregisterCancellation(requestId);
@@ -167,12 +172,16 @@ void McpServer::setupRoutes() {
             auto response = handleRequest(request);
             if (response.is_null()) {
                 res.status = 202;
+                spdlog::debug("HTTP POST /mcp response: 202 Accepted");
                 return;
             }
-            res.set_content(response.dump(), "application/json");
+            auto body = response.dump();
+            spdlog::debug("HTTP POST /mcp response: {}", body);
+            res.set_content(body, "application/json");
         } catch (const json::parse_error& e) {
             res.set_header("Content-Type", "application/json");
             auto err = makeError(nullptr, -32700, std::string("Parse error: ") + e.what());
+            spdlog::debug("HTTP POST /mcp response: {}", err.dump());
             res.set_content(err.dump(), "application/json");
         }
     });

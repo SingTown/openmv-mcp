@@ -191,9 +191,8 @@ static const McpTool TOOL_CAMERA_RESET = {
     CAMERA_PATH_SCHEMA,
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
         auto cameraPath = args.at("cameraPath").get<std::string>();
-        auto& cam = ctx.getCamera(cameraPath);
-        cam.reset();
-        ctx.removeCamera(cameraPath);
+        auto camera = ctx.takeCamera(cameraPath);
+        camera->reset();
         McpContent resp;
         resp.addText(json({{"success", true}}));
         return resp;
@@ -239,14 +238,14 @@ static const McpTool TOOL_FIRMWARE_FLASH = {
      {"required", json::array({"cameraPath"})}},
     [](McpContext& ctx, const json& args, const std::atomic<bool>& cancelled) {
         auto cameraPath = args.at("cameraPath").get<std::string>();
-        auto& cam = ctx.getCamera(cameraPath);
-        auto name = cam.info.boardName();
+        auto camera = ctx.takeCamera(cameraPath);
+        auto name = camera->info.boardName();
         if (name.empty()) {
             throw std::runtime_error("Camera board name is unknown; cannot determine firmware target");
         }
         auto firmwareDir = args.value("firmwareDir", std::string{});
-        cam.boot();
-        ctx.removeCamera(cameraPath);
+        camera->boot();
+        camera.reset();
         auto onNotice = [&](const std::string& msg) { ctx.streamMessage(msg, "notice"); };
         auto onDebug = [&](const std::string& msg) { ctx.streamMessage(msg, "debug"); };
         firmwareFlash(name, firmwareDir, onNotice, onDebug, cancelled);

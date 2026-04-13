@@ -37,6 +37,7 @@ class McpContext {
     McpContext& operator=(const McpContext&) = delete;
 
     Camera& getCamera(const std::string& path) {
+        std::lock_guard lock(cameras_mutex_);
         auto it = cameras_.find(path);
         if (it == cameras_.end()) {
             throw std::runtime_error("Camera not connected: " + path);
@@ -44,9 +45,13 @@ class McpContext {
         return *it->second;
     }
 
-    [[nodiscard]] bool hasCamera(const std::string& path) const { return cameras_.contains(path); }
+    [[nodiscard]] bool hasCamera(const std::string& path) const {
+        std::lock_guard lock(cameras_mutex_);
+        return cameras_.contains(path);
+    }
 
     Camera& addCamera(const std::string& path, std::unique_ptr<Camera> camera) {
+        std::lock_guard lock(cameras_mutex_);
         if (cameras_.count(path) != 0) {
             throw std::runtime_error("Camera already connected: " + path);
         }
@@ -55,12 +60,19 @@ class McpContext {
     }
 
     void removeCamera(const std::string& path) {
+        auto cam = takeCamera(path);
+        cam->disconnect();
+    }
+
+    std::unique_ptr<Camera> takeCamera(const std::string& path) {
+        std::lock_guard lock(cameras_mutex_);
         auto it = cameras_.find(path);
         if (it == cameras_.end()) {
             throw std::runtime_error("Camera not connected: " + path);
         }
-        it->second->disconnect();
+        auto cam = std::move(it->second);
         cameras_.erase(it);
+        return cam;
     }
 
     void streamMessage(const std::string& message, const std::string& level = "info") {
@@ -93,6 +105,7 @@ class McpContext {
     }
 
  private:
+    mutable std::mutex cameras_mutex_;
     std::map<std::string, std::unique_ptr<Camera>> cameras_;
     std::mutex cancellation_mutex_;
     std::unordered_map<std::string, std::shared_ptr<std::atomic<bool>>> cancellations_;

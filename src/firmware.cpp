@@ -70,7 +70,7 @@ void firmwareRepair(const std::string& name,
     if (onNotice) {
         onNotice("Flashing bootloader...");
     }
-    Subprocess(board.bootloaderCommands, fwDir, onDebug, cancelled).join();
+    Subprocess(board.bootloaderCommands, fwDir, onDebug).join();
 
     if (onNotice && !board.bootloaderDetectMessage.empty()) {
         onNotice(board.bootloaderDetectMessage);
@@ -79,7 +79,7 @@ void firmwareRepair(const std::string& name,
     if (onNotice) {
         onNotice("Flashing firmware...");
     }
-    Subprocess(board.firmwareCommands, fwDir, onDebug, cancelled).join();
+    Subprocess(board.firmwareCommands, fwDir, onDebug).join();
 }
 
 void firmwareFlash(const std::string& name,
@@ -100,7 +100,7 @@ void firmwareFlash(const std::string& name,
         onNotice("Flashing firmware...");
     }
     auto dir = firmwareDir.empty() ? board.firmwareDir : firmwareDir;
-    Subprocess(board.firmwareCommands, resolveFirmwareDir(dir), onDebug, cancelled).join();
+    Subprocess(board.firmwareCommands, resolveFirmwareDir(dir), onDebug).join();
 }
 
 std::string latestFirmwareVersion() {
