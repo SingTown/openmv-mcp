@@ -70,6 +70,45 @@ TEST_F(DeviceTest, ScriptRunningAfterDelay) {
     EXPECT_GE(terminal_ok, 5) << "Should read terminal in at least half of the attempts";
 }
 
+TEST_F(DeviceTest, FrameEnableToggle) {
+    auto run = client_->callTool("script_run", {{"cameraPath", camera_path_}, {"script", kSnapshotScript}}).wait();
+    ASSERT_FALSE(run.is_error);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+
+    auto frame_on = client_->callTool("frame_capture", {{"cameraPath", camera_path_}}).wait();
+    EXPECT_FALSE(frame_on.is_error) << "frame should be available when enabled";
+
+    auto disable = client_->callTool("frame_enable", {{"cameraPath", camera_path_}, {"enable", false}}).wait();
+    ASSERT_FALSE(disable.is_error);
+    EXPECT_TRUE(json::parse(disable.content[0].text)["success"].get<bool>());
+
+    client_->callTool("frame_capture", {{"cameraPath", camera_path_}}).wait();
+    std::this_thread::sleep_for(std::chrono::milliseconds(1500));
+
+    int disabled_ok = 0;
+    for (int i = 0; i < 5; i++) {
+        auto f = client_->callTool("frame_capture", {{"cameraPath", camera_path_}}).wait();
+        if (!f.is_error) disabled_ok++;
+        std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    }
+    std::cout << "Frames while disabled: " << disabled_ok << "/5" << std::endl;
+    EXPECT_EQ(disabled_ok, 0) << "no new frames should arrive while disabled";
+
+    auto enable = client_->callTool("frame_enable", {{"cameraPath", camera_path_}, {"enable", true}}).wait();
+    ASSERT_FALSE(enable.is_error);
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    int enabled_ok = 0;
+    for (int i = 0; i < 5; i++) {
+        auto f = client_->callTool("frame_capture", {{"cameraPath", camera_path_}}).wait();
+        if (!f.is_error) enabled_ok++;
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    }
+    std::cout << "Frames after re-enable: " << enabled_ok << "/5" << std::endl;
+    EXPECT_GE(enabled_ok, 3) << "frames should resume after re-enabling";
+}
+
 TEST_F(DeviceTest, StopScript) {
     client_
         ->callTool("script_run",

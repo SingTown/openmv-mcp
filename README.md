@@ -53,6 +53,7 @@ npx @modelcontextprotocol/inspector --config mcp-inspector.json
 | `script_output` | Read script output (stdout/stderr) |
 | `script_save` | Save a MicroPython script to main.py on the camera's USB drive |
 | `frame_capture` | Capture a frame as base64 JPEG |
+| `frame_enable` | Enable or disable frame streaming from the camera |
 | `firmware_flash` | Flash firmware to the camera |
 | `firmware_repair` | Fully repair camera (bootloader + firmware) |
 | `license_register` | Register a board key for the connected camera |

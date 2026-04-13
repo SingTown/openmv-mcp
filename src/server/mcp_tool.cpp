@@ -295,6 +295,23 @@ static const McpTool TOOL_LICENSE_REGISTER = {
     },
 };
 
+static const McpTool TOOL_FRAME_ENABLE = {
+    "frame_enable",
+    "Enable or disable frame streaming from the camera",
+    {{"type", "object"},
+     {"properties",
+      {{"cameraPath", {{"type", "string"}, {"description", "Serial port path of the camera"}}},
+       {"enable", {{"type", "boolean"}, {"description", "true to enable, false to disable"}}}}},
+     {"required", json::array({"cameraPath", "enable"})}},
+    [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
+        auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
+        cam.enableFrame(args.at("enable").get<bool>());
+        McpContent resp;
+        resp.addText(json({{"success", true}}));
+        return resp;
+    },
+};
+
 const std::vector<const McpTool*> ALL_MCP_TOOLS = {
     &TOOL_CAMERA_LIST,
     &TOOL_CAMERA_CONNECT,
@@ -307,6 +324,7 @@ const std::vector<const McpTool*> ALL_MCP_TOOLS = {
     &TOOL_SCRIPT_RUNNING,
     &TOOL_SCRIPT_SAVE,
     &TOOL_FRAME_CAPTURE,
+    &TOOL_FRAME_ENABLE,
     &TOOL_FIRMWARE_FLASH,
     &TOOL_FIRMWARE_REPAIR,
     &TOOL_LICENSE_REGISTER,
