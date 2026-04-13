@@ -6,8 +6,9 @@ An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server for c
 
 ```bash
 openmv_mcp_server              # default port 15257
-openmv_mcp_server --port 9000  # custom port
-openmv_mcp_server --version    # print version and exit
+openmv_mcp_server --port 9000    # custom port
+openmv_mcp_server --level trace  # verbose logging
+openmv_mcp_server --version      # print version and exit
 ```
 
 ### Daemon mode
@@ -28,7 +29,7 @@ kill $(lsof -i :15257 -t)
 for /f "tokens=5" %a in ('netstat -ano ^| findstr :15257 ^| findstr LISTENING') do taskkill /PID %a /F
 ```
 
-Flags: `--daemon, -d` (fork to background), `--log <path>` (redirect stdout/stderr; defaults to `/dev/null` or `NUL`).
+Flags: `--daemon, -d` (fork to background), `--log <path>` (redirect stdout/stderr; defaults to `/dev/null` or `NUL`), `--level <lvl>` (log level: `trace|debug|info|warn|error|critical|off`, default `info`).
 
 ## MCP Inspector
 

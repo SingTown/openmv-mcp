@@ -69,7 +69,7 @@ This is an MCP (Model Context Protocol) server for controlling OpenMV cameras. I
 ### Command-Line Options
 
 - `--port, -p` — HTTP port (default: 15257)
-- `--daemon, -d` — fork to background (POSIX only; not supported on Windows)
+- `--daemon, -d` — run in background
 - `--log <path>` — redirect stdout/stderr in daemon mode (defaults to `/dev/null`)
 - `--version, -v` — print version (from `version.txt`, injected at compile time) and exit
 

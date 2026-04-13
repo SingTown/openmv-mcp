@@ -6,6 +6,8 @@
 #ifndef NOMINMAX
 #define NOMINMAX
 #endif
+#include <spdlog/fmt/bin_to_hex.h>
+#include <spdlog/spdlog.h>
 #include <windows.h>
 
 #include "serial_port.h"
@@ -120,11 +122,15 @@ bool SerialPort::send() {
     }
     auto h = static_cast<HANDLE>(handle_);
     size_t total = write_buf_.size();
+    spdlog::debug("[serial] TX {}: {:spn}",
+                  total,
+                  spdlog::to_hex(write_buf_.data(), write_buf_.data() + std::min(total, size_t{64})));
     size_t written = 0;
     while (written < total) {
         DWORD n = 0;
         auto remaining = static_cast<DWORD>(total - written);
         if (!WriteFile(h, write_buf_.data() + written, remaining, &n, nullptr)) {
+            spdlog::error("[serial] TX write error");
             write_buf_.clear();
             return false;
         }
@@ -152,6 +158,7 @@ bool SerialPort::recv() {
     DWORD bytes_read = 0;
     if (!ReadFile(h, buf, to_read, &bytes_read, nullptr)) return false;
     if (bytes_read > 0) {
+        spdlog::debug("[serial] RX {}: {:spn}", bytes_read, spdlog::to_hex(buf, buf + std::min<DWORD>(bytes_read, 64)));
         recv_buf_.push_back(buf, bytes_read);
         return true;
     }

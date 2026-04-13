@@ -1,5 +1,7 @@
 #include "protocol_v1.h"
 
+#include <spdlog/spdlog.h>
+
 #include <chrono>
 #include <cstdint>
 #include <cstring>
@@ -51,6 +53,7 @@ void ProtocolV1::delay(int ms) {
 
 void ProtocolV1::sendCommand(uint8_t opcode, uint32_t len) {
     requireOpen();
+    spdlog::debug("[proto-v1] cmd opcode=0x{:02x} len={}", opcode, len);
     port_->write_u8(V1Opcode::CMD);
     port_->write_u8(opcode);
     port_->write_le32(len);

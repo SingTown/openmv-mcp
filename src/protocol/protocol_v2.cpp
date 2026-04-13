@@ -1,5 +1,7 @@
 #include "protocol_v2.h"
 
+#include <spdlog/spdlog.h>
+
 #include <algorithm>
 #include <chrono>
 #include <cstring>
@@ -74,6 +76,13 @@ void ProtocolV2::sendPacket(const Packet& pkt) {
     requireOpen();
     if (pkt.payload.size() > max_payload_) throw std::runtime_error("Payload too large");
 
+    spdlog::debug("[proto-v2] TX seq={} ch={} flags=0x{:02x} opcode=0x{:02x} len={}",
+                  pkt.sequence,
+                  pkt.channel,
+                  pkt.flags,
+                  pkt.opcode,
+                  pkt.length);
+
     port_->write_bytes({0xAA, 0xD5, pkt.sequence, pkt.channel, pkt.flags, pkt.opcode});
     port_->write_le16(pkt.length);
     port_->write_le16(pkt.hdrCrc());
@@ -119,6 +128,12 @@ Packet ProtocolV2::readPacket() {
             }
         }
 
+        spdlog::debug("[proto-v2] RX seq={} ch={} flags=0x{:02x} opcode=0x{:02x} len={}",
+                      pkt.sequence,
+                      pkt.channel,
+                      pkt.flags,
+                      pkt.opcode,
+                      pkt.length);
         return pkt;
     }
     throw std::runtime_error("readPacket failed: max retries exceeded");

@@ -1,3 +1,5 @@
+#include <spdlog/spdlog.h>
+
 #include <atomic>
 #include <csignal>
 #include <exception>
@@ -32,19 +34,30 @@ int main(int argc, char* argv[]) {
     bool daemon_mode = false;
     std::string log_path;
 
+    spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$] %v");
+    spdlog::set_level(spdlog::level::info);
+
     for (int i = 1; i < argc; ++i) {
         std::string arg = argv[i];
         if ((arg == "--port" || arg == "-p") && i + 1 < argc) {
             try {
                 port = std::stoi(argv[++i]);
             } catch (const std::exception&) {
-                std::cerr << "Invalid port number: " << argv[i] << '\n';
+                spdlog::error("Invalid port number: {}", argv[i]);
                 return 1;
             }
         } else if (arg == "--daemon" || arg == "-d") {
             daemon_mode = true;
         } else if (arg == "--log" && i + 1 < argc) {
             log_path = argv[++i];
+        } else if (arg == "--level" && i + 1 < argc) {
+            std::string lv_str = argv[++i];
+            auto lv = spdlog::level::from_str(lv_str);
+            if (lv == spdlog::level::off && lv_str != "off") {
+                spdlog::error("Invalid log level: {} (expected: trace|debug|info|warn|error|critical|off)", lv_str);
+                return 1;
+            }
+            spdlog::set_level(lv);
         } else if (arg == "--version" || arg == "-v") {
 #ifdef OPENMV_MCP_VERSION
             std::cout << OPENMV_MCP_VERSION << '\n';
@@ -57,6 +70,7 @@ int main(int argc, char* argv[]) {
                       << "  --port, -p <port>  HTTP port (default: 15257)\n"
                       << "  --daemon, -d       Run in background\n"
                       << "  --log <path>       Redirect stdout/stderr to file in daemon mode\n"
+                      << "  --level <lvl>      Log level: trace|debug|info|warn|error|critical|off (default: info)\n"
                       << "  --version, -v      Print version and exit\n";
             return 0;
         }
@@ -67,10 +81,10 @@ int main(int argc, char* argv[]) {
     mcp::McpServer server(port);
     if (!server.bind()) {
         if (isOpenmvMcpOnPort(port)) {
-            std::cout << "openmv-mcp server already running on port " << port << '\n';
+            spdlog::info("openmv-mcp server already running on port {}", port);
             return 0;
         }
-        std::cerr << "Failed to bind port " << port << " (already in use?)\n";
+        spdlog::error("Failed to bind port {} (already in use?)", port);
         return 1;
     }
 
@@ -78,7 +92,7 @@ int main(int argc, char* argv[]) {
         try {
             mcp::daemonize(argc, argv, log_path);
         } catch (const std::exception& e) {
-            std::cerr << "daemonize failed: " << e.what() << '\n';
+            spdlog::error("daemonize failed: {}", e.what());
             return 1;
         }
     }

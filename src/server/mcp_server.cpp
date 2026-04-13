@@ -1,7 +1,8 @@
 #include "server/mcp_server.h"
 
+#include <spdlog/spdlog.h>
+
 #include <algorithm>
-#include <iostream>
 
 namespace mcp {
 
@@ -185,7 +186,7 @@ bool McpServer::bind() {
 }
 
 void McpServer::start() {
-    std::cout << "MCP Server listening on port " << port_ << '\n';
+    spdlog::info("MCP Server listening on port {}", port_);
     server_.listen_after_bind();
     ctx_.reset();
 }

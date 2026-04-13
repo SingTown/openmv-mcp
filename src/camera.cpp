@@ -1,6 +1,7 @@
 #include "camera.h"
 
-#include <iostream>
+#include <spdlog/spdlog.h>
+
 #include <memory>
 
 #include "protocol/protocol_detect.h"
@@ -165,9 +166,9 @@ void Camera::startLoopThread() {
                 poll();
                 consecutive_errors = 0;
             } catch (const std::exception& e) {
-                std::cerr << "Protocol poll error: " << e.what() << '\n';
+                spdlog::error("Protocol poll error: {}", e.what());
                 if (++consecutive_errors >= kMaxConsecutiveErrors) {
-                    std::cerr << "Protocol loop: " << kMaxConsecutiveErrors << " consecutive errors, stopping.\n";
+                    spdlog::error("Protocol loop: {} consecutive errors, stopping.", kMaxConsecutiveErrors);
                     port_->close();
                     break;
                 }

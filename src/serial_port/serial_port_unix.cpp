@@ -1,3 +1,6 @@
+#include <spdlog/fmt/bin_to_hex.h>
+#include <spdlog/spdlog.h>
+
 #include "serial_port.h"
 
 #ifndef _WIN32
@@ -123,10 +126,14 @@ bool SerialPort::send() {
         return false;
     }
     size_t len = write_buf_.size();
+    spdlog::debug("[serial] TX {}: {:spn}",
+                  len,
+                  spdlog::to_hex(write_buf_.data(), write_buf_.data() + std::min(len, size_t{64})));
     size_t written = 0;
     while (written < len) {
         ssize_t n = ::write(fd_, write_buf_.data() + written, len - written);
         if (n < 0) {
+            spdlog::error("[serial] TX write error");
             write_buf_.clear();
             return false;
         }
@@ -151,6 +158,7 @@ bool SerialPort::recv() {
     uint8_t buf[4096];
     ssize_t n = ::read(fd_, buf, sizeof(buf));
     if (n > 0) {
+        spdlog::debug("[serial] RX {}: {:spn}", n, spdlog::to_hex(buf, buf + std::min<size_t>(n, 64)));
         recv_buf_.push_back(buf, static_cast<size_t>(n));
         return true;
     }

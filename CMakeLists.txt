@@ -140,6 +140,13 @@ add_custom_command(
 )
 add_custom_target(embedded_resource_hash DEPENDS ${EMBED_HASH_HEADER})
 
+# spdlog (logging)
+set(SPDLOG_BUILD_EXAMPLE OFF CACHE BOOL "" FORCE)
+set(SPDLOG_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(SPDLOG_INSTALL OFF CACHE BOOL "" FORCE)
+set(SPDLOG_SYSTEM_INCLUDES ON CACHE BOOL "" FORCE)
+add_subdirectory(3rdparty/spdlog)
+
 # miniz (zip extraction at runtime)
 set(MINIZ_BUILD_TESTS OFF CACHE BOOL "" FORCE)
 set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
@@ -161,7 +168,7 @@ add_dependencies(embedded_resources embedded_resource_zip)
 add_executable(openmv_mcp_server ${CORE_SOURCES} src/main.cpp)
 target_include_directories(openmv_mcp_server PRIVATE ${COMMON_INCLUDES} ${CMAKE_SOURCE_DIR}/3rdparty/miniz ${CMAKE_BINARY_DIR}/generated)
 target_compile_definitions(openmv_mcp_server PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT OPENMV_MCP_VERSION="${OPENMV_MCP_VERSION}")
-target_link_libraries(openmv_mcp_server PRIVATE ${COMMON_LIBS} embedded_resources miniz)
+target_link_libraries(openmv_mcp_server PRIVATE ${COMMON_LIBS} embedded_resources miniz spdlog::spdlog)
 add_dependencies(openmv_mcp_server embedded_resource_hash)
 
 # Test executable
@@ -196,7 +203,7 @@ endif()
 add_executable(openmv_mcp_server_test ${CORE_SOURCES} ${TEST_SOURCES})
 target_include_directories(openmv_mcp_server_test PRIVATE ${COMMON_INCLUDES} ${CMAKE_SOURCE_DIR}/3rdparty/miniz ${CMAKE_BINARY_DIR}/generated)
 target_compile_definitions(openmv_mcp_server_test PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT OPENMV_MCP_VERSION="${OPENMV_MCP_VERSION}")
-target_link_libraries(openmv_mcp_server_test PRIVATE ${COMMON_LIBS} GTest::gtest_main embedded_resources miniz)
+target_link_libraries(openmv_mcp_server_test PRIVATE ${COMMON_LIBS} GTest::gtest_main embedded_resources miniz spdlog::spdlog)
 add_dependencies(openmv_mcp_server_test embedded_resource_hash)
 gtest_discover_tests(openmv_mcp_server_test WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTIES TIMEOUT 300 ENVIRONMENT "GTEST_FAIL_FAST=1")
 
