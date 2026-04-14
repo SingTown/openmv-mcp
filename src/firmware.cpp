@@ -50,10 +50,7 @@ static void requireResourcePath() {
     }
 }
 
-void firmwareRepair(const std::string& name,
-                    const MessageCallback& onNotice,
-                    const MessageCallback& onDebug,
-                    const std::atomic<bool>& cancelled) {
+void firmwareRepair(const std::string& name, const MessageCallback& onMessage, const std::atomic<bool>& cancelled) {
     requireResourcePath();
     const auto& board = findBoardByName(name);
 
@@ -63,29 +60,28 @@ void firmwareRepair(const std::string& name,
 
     const auto fwDir = resolveFirmwareDir(board.firmwareDir);
 
-    if (onNotice && !board.factoryDetectMessage.empty()) {
-        onNotice(board.factoryDetectMessage);
+    if (onMessage && !board.factoryDetectMessage.empty()) {
+        onMessage(board.factoryDetectMessage);
     }
     waitForDevice(board.factoryDetectCommand, cancelled);
-    if (onNotice) {
-        onNotice("Flashing bootloader...");
+    if (onMessage) {
+        onMessage("Flashing bootloader...");
     }
-    Subprocess(board.bootloaderCommands, fwDir, onDebug).join();
+    Subprocess(board.bootloaderCommands, fwDir, onMessage).join();
 
-    if (onNotice && !board.bootloaderDetectMessage.empty()) {
-        onNotice(board.bootloaderDetectMessage);
+    if (onMessage && !board.bootloaderDetectMessage.empty()) {
+        onMessage(board.bootloaderDetectMessage);
     }
     waitForDevice(board.bootloaderDetectCommand, cancelled);
-    if (onNotice) {
-        onNotice("Flashing firmware...");
+    if (onMessage) {
+        onMessage("Flashing firmware...");
     }
-    Subprocess(board.firmwareCommands, fwDir, onDebug).join();
+    Subprocess(board.firmwareCommands, fwDir, onMessage).join();
 }
 
 void firmwareFlash(const std::string& name,
                    const fs::path& firmwareDir,
-                   const MessageCallback& onNotice,
-                   const MessageCallback& onDebug,
+                   const MessageCallback& onMessage,
                    const std::atomic<bool>& cancelled) {
     requireResourcePath();
     const auto& board = findBoardByName(name);
@@ -96,11 +92,11 @@ void firmwareFlash(const std::string& name,
 
     waitForDevice(board.bootloaderDetectCommand, cancelled);
 
-    if (onNotice) {
-        onNotice("Flashing firmware...");
+    if (onMessage) {
+        onMessage("Flashing firmware...");
     }
     auto dir = firmwareDir.empty() ? board.firmwareDir : firmwareDir;
-    Subprocess(board.firmwareCommands, resolveFirmwareDir(dir), onDebug).join();
+    Subprocess(board.firmwareCommands, resolveFirmwareDir(dir), onMessage).join();
 }
 
 std::string latestFirmwareVersion() {

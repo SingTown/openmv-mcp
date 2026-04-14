@@ -140,11 +140,17 @@ void McpServer::setupRoutes() {
                 if (tool != nullptr && tool->streaming) {
                     auto id = request.value("id", json(nullptr));
                     auto args = params.value("arguments", json::object());
-                    auto provider = [this, tool, id = std::move(id), args = std::move(args)](size_t,
-                                                                                             httplib::DataSink& sink) {
+                    auto meta = params.value("_meta", json::object());
+                    auto progressToken = meta.value("progressToken", json(nullptr));
+                    auto provider = [this,
+                                     tool,
+                                     id = std::move(id),
+                                     args = std::move(args),
+                                     progressToken = std::move(progressToken)](size_t, httplib::DataSink& sink) {
                         auto requestId = id.dump();
                         auto cancelled = ctx_->registerCancellation(requestId);
                         ctx_->stream = &sink.os;
+                        ctx_->setProgressToken(progressToken);
                         try {
                             auto resp = tool->handler(*ctx_, args, *cancelled);
                             auto payload = makeResponse(id, {{"content", resp.toContent()}});
@@ -159,6 +165,7 @@ void McpServer::setupRoutes() {
                             writeStreamEvent(sink.os, payload);
                         }
                         ctx_->stream = nullptr;
+                        ctx_->setProgressToken(nullptr);
                         ctx_->unregisterCancellation(requestId);
                         sink.done();
                         return true;

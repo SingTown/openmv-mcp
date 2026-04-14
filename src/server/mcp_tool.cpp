@@ -246,9 +246,9 @@ static const McpTool TOOL_FIRMWARE_FLASH = {
         auto firmwareDir = args.value("firmwareDir", std::string{});
         camera->boot();
         camera.reset();
-        auto onNotice = [&](const std::string& msg) { ctx.streamMessage(msg, "notice"); };
-        auto onDebug = [&](const std::string& msg) { ctx.streamMessage(msg, "debug"); };
-        firmwareFlash(name, firmwareDir, onNotice, onDebug, cancelled);
+        uint64_t counter = 0;
+        auto onMessage = [&ctx, &counter](const std::string& msg) { ctx.streamProgress(++counter, std::nullopt, msg); };
+        firmwareFlash(name, firmwareDir, onMessage, cancelled);
         McpContent resp;
         resp.addText(json({{"success", true}}));
         return resp;
@@ -264,9 +264,9 @@ static const McpTool TOOL_FIRMWARE_REPAIR = {
      {"required", json::array({"name"})}},
     [](McpContext& ctx, const json& args, const std::atomic<bool>& cancelled) {
         auto name = args.at("name").get<std::string>();
-        auto onNotice = [&](const std::string& msg) { ctx.streamMessage(msg, "notice"); };
-        auto onDebug = [&](const std::string& msg) { ctx.streamMessage(msg, "debug"); };
-        firmwareRepair(name, onNotice, onDebug, cancelled);
+        uint64_t counter = 0;
+        auto onMessage = [&ctx, &counter](const std::string& msg) { ctx.streamProgress(++counter, std::nullopt, msg); };
+        firmwareRepair(name, onMessage, cancelled);
         McpContent resp;
         resp.addText(json({{"success", true}}));
         return resp;

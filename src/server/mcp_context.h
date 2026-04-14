@@ -5,10 +5,12 @@
 #include <memory>
 #include <mutex>
 #include <nlohmann/json.hpp>
+#include <optional>
 #include <ostream>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
+#include <utility>
 
 #include "camera.h"
 
@@ -75,13 +77,24 @@ class McpContext {
         return cam;
     }
 
-    void streamMessage(const std::string& message, const std::string& level = "info") {
-        if (stream != nullptr) {
-            writeStreamEvent(*stream,
-                             json({{"jsonrpc", "2.0"},
-                                   {"method", "notifications/message"},
-                                   {"params", {{"level", level}, {"data", message}}}}));
+    void setProgressToken(json token) { progress_token_ = std::move(token); }
+
+    void streamProgress(uint64_t progress, std::optional<uint64_t> total, const std::string& message) {
+        if (stream == nullptr || progress_token_.is_null()) {
+            return;
         }
+        json params = {
+            {"progressToken", progress_token_},
+            {"progress", progress},
+        };
+        if (total.has_value()) {
+            params["total"] = *total;
+        }
+        if (!message.empty()) {
+            params["message"] = message;
+        }
+        writeStreamEvent(
+            *stream, json({{"jsonrpc", "2.0"}, {"method", "notifications/progress"}, {"params", std::move(params)}}));
     }
 
     std::shared_ptr<std::atomic<bool>> registerCancellation(const std::string& key) {
@@ -109,6 +122,7 @@ class McpContext {
     std::map<std::string, std::unique_ptr<Camera>> cameras_;
     std::mutex cancellation_mutex_;
     std::unordered_map<std::string, std::shared_ptr<std::atomic<bool>>> cancellations_;
+    json progress_token_;
 };
 
 }  // namespace mcp
