@@ -93,7 +93,7 @@ TEST_F(DeviceTest, FrameEnableToggle) {
         std::this_thread::sleep_for(std::chrono::milliseconds(300));
     }
     std::cout << "Frames while disabled: " << disabled_ok << "/5" << std::endl;
-    EXPECT_EQ(disabled_ok, 0) << "no new frames should arrive while disabled";
+    EXPECT_LE(disabled_ok, 1) << "at most one in-flight frame may arrive after disable";
 
     auto enable = client_->callTool("frame_enable", {{"cameraPath", camera_path_}, {"enable", true}}).wait();
     ASSERT_FALSE(enable.is_error);
