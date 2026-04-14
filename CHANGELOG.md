@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.3.0](https://github.com/SingTown/openmv-mcp/compare/v1.2.0...v1.3.0) (2026-04-13)
+
+
+### Features
+
+* add frame_enable tool to toggle frame streaming ([2a43fdc](https://github.com/SingTown/openmv-mcp/commit/2a43fdc1171333520d1ba0238f0b46f8b6133dc0))
+* guard camera map with mutex and add MCP request logging ([943fcee](https://github.com/SingTown/openmv-mcp/commit/943fceece41d99350cfb89c03e1bee36576a1d4d))
+* implement findDrivePath for Windows ([abb6578](https://github.com/SingTown/openmv-mcp/commit/abb65787fc7594a4f98a5d79e9d5e4260749b8a4))
+* include connection state in camera_list output ([f5426a7](https://github.com/SingTown/openmv-mcp/commit/f5426a71f562a47039f66e08093324c71f387e2b))
+* include latest firmware version in camera_info output ([1096601](https://github.com/SingTown/openmv-mcp/commit/1096601278e4eb500fb63d6642896202346d4522))
+* rename /ws/script to /ws/status with connection state ([3674b53](https://github.com/SingTown/openmv-mcp/commit/3674b53e24a2f6b87c29105dc540f4a8244a5a23))
+* switch Windows serial port to overlapped I/O ([d334b1b](https://github.com/SingTown/openmv-mcp/commit/d334b1bf81f35421a377549fd5daff3a1c66755c))
+
 ## [1.2.0](https://github.com/SingTown/openmv-mcp/compare/v1.1.0...v1.2.0) (2026-04-13)
 
 
