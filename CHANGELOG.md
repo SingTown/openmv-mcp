@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.2](https://github.com/SingTown/openmv-mcp/compare/v1.4.1...v1.4.2) (2026-04-15)
+
+
+### Bug Fixes
+
+* smoke test skip-github-release pipeline ([94e985c](https://github.com/SingTown/openmv-mcp/commit/94e985cc052d159326f9bac922e97334598eb1db))
+
 ## [1.4.1](https://github.com/SingTown/openmv-mcp/compare/v1.4.0...v1.4.1) (2026-04-15)
 
 
