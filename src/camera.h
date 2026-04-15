@@ -22,8 +22,11 @@ namespace mcp {
 class Camera {
  public:
     using CallbackId = int;
-    using ConnectedCallback = std::function<void(bool connected)>;
-    using ScriptCallback = std::function<void(bool running)>;
+    struct Status {
+        bool connected;
+        bool script_running;
+    };
+    using StatusCallback = std::function<void(const Status& status)>;
     using TerminalCallback = std::function<void(const std::string& text)>;
     using FrameCallback = std::function<void(const Frame& frame)>;
 
@@ -44,8 +47,7 @@ class Camera {
     [[nodiscard]] bool isConnected() const { return connected_.load(); }
     [[nodiscard]] bool scriptRunning() const { return script_running_.load(); }
 
-    CallbackId onConnected(ConnectedCallback cb);
-    CallbackId onScript(ScriptCallback cb);
+    CallbackId onStatus(StatusCallback cb);
     CallbackId onTerminal(TerminalCallback cb);
     CallbackId onFrame(FrameCallback cb);
     void removeCallback(CallbackId id);
@@ -67,6 +69,7 @@ class Camera {
 
     void updateConnected(bool connected);
     void updateScript(bool running);
+    void emitStatus();
     void appendTerminal(const std::vector<uint8_t>& data);
     void setFrame(Frame frame);
 
@@ -86,8 +89,7 @@ class Camera {
 
     std::mutex callback_mutex_;
     CallbackId next_cb_id_{0};
-    std::map<CallbackId, ConnectedCallback> on_connected_cbs_;
-    std::map<CallbackId, ScriptCallback> on_script_cbs_;
+    std::map<CallbackId, StatusCallback> on_status_cbs_;
     std::map<CallbackId, TerminalCallback> on_terminal_cbs_;
     Utf8Buffer terminal_cb_buf_;
     std::map<CallbackId, FrameCallback> on_frame_cbs_;

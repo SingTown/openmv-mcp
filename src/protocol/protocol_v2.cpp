@@ -31,12 +31,12 @@ constexpr uint16_t CRC_SIZE = 4;
 constexpr uint16_t MIN_PAYLOAD_SIZE = 52;
 }  // namespace Proto
 
-namespace Status {
+namespace RespStatus {
 constexpr uint8_t BUSY = 0x04;
 constexpr uint8_t CHECKSUM = 0x05;
 constexpr uint8_t SEQUENCE = 0x06;
 constexpr uint8_t TIMEOUT = 0x03;
-}  // namespace Status
+}  // namespace RespStatus
 
 namespace Opcode {
 constexpr uint8_t PROTO_SYNC = 0x00;
@@ -186,10 +186,10 @@ std::vector<uint8_t> ProtocolV2::readResponse() {
             uint16_t status = 0;
             if (pkt.payload.size() >= 2) std::memcpy(&status, pkt.payload.data(), 2);
 
-            if (status == Status::CHECKSUM) throw std::runtime_error("Checksum error from device");
-            if (status == Status::SEQUENCE) throw std::runtime_error("Sequence error from device");
-            if (status == Status::TIMEOUT) throw std::runtime_error("Timeout from device");
-            if (status == Status::BUSY) throw std::runtime_error("Device busy");
+            if (status == RespStatus::CHECKSUM) throw std::runtime_error("Checksum error from device");
+            if (status == RespStatus::SEQUENCE) throw std::runtime_error("Sequence error from device");
+            if (status == RespStatus::TIMEOUT) throw std::runtime_error("Timeout from device");
+            if (status == RespStatus::BUSY) throw std::runtime_error("Device busy");
             throw std::runtime_error("Command failed with status: " + std::to_string(status));
         }
 

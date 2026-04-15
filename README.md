@@ -58,20 +58,13 @@ npx @modelcontextprotocol/inspector --config mcp-inspector.json
 | `firmware_repair` | Fully repair camera (bootloader + firmware) |
 | `license_register` | Register a board key for the connected camera |
 
-## WebSocket Endpoints
-
-Real-time push endpoints for live monitoring:
-
-| Endpoint | Data | Format |
-|---|---|---|
-| `/ws/status?camera=<path>` | Connection & script running status | JSON |
-| `/ws/terminal?camera=<path>` | Terminal output | Text |
-
 ## HTTP Streaming Endpoints
 
 | Endpoint | Data | Format |
 |---|---|---|
+| `GET /stream/status?camera=<path>` | Connection & script running status | `text/event-stream` (SSE) |
 | `GET /stream/frame?camera=<path>` | Frame buffer | `multipart/x-mixed-replace; boundary=frame` (MJPEG) |
+| `GET /stream/terminal?camera=<path>` | Terminal output | `text/plain; charset=utf-8` (chunked) |
 
 
 ## License

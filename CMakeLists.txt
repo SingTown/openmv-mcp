@@ -186,7 +186,7 @@ include(GoogleTest)
 set(TEST_SOURCES
     tests/mcp_server_test.cpp
     tests/mcp_device_test.cpp
-    tests/mcp_ws_test.cpp
+    tests/mcp_stream_test.cpp
     tests/frame_test.cpp
     tests/base64_test.cpp
     tests/crc_test.cpp

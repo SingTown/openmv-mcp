@@ -58,11 +58,16 @@ Camera::CallbackId Camera::addCallback(std::map<CallbackId, Cb>& map, Cb cb) {
     return id;
 }
 
-Camera::CallbackId Camera::onConnected(ConnectedCallback cb) {
-    return addCallback(on_connected_cbs_, std::move(cb));
-}
-Camera::CallbackId Camera::onScript(ScriptCallback cb) {
-    return addCallback(on_script_cbs_, std::move(cb));
+Camera::CallbackId Camera::onStatus(StatusCallback cb) {
+    CallbackId id;
+    {
+        std::lock_guard<std::mutex> lock(callback_mutex_);
+        id = next_cb_id_++;
+        on_status_cbs_.emplace(id, cb);
+    }
+    Status snapshot{connected_.load(), script_running_.load()};
+    cb(snapshot);
+    return id;
 }
 Camera::CallbackId Camera::onTerminal(TerminalCallback cb) {
     return addCallback(on_terminal_cbs_, std::move(cb));
@@ -73,27 +78,31 @@ Camera::CallbackId Camera::onFrame(FrameCallback cb) {
 
 void Camera::removeCallback(CallbackId id) {
     std::lock_guard<std::mutex> lock(callback_mutex_);
-    on_connected_cbs_.erase(id);
-    on_script_cbs_.erase(id);
+    on_status_cbs_.erase(id);
     on_terminal_cbs_.erase(id);
     on_frame_cbs_.erase(id);
+}
+
+void Camera::emitStatus() {
+    Status snapshot{connected_.load(), script_running_.load()};
+    std::vector<StatusCallback> cbs;
+    {
+        std::lock_guard<std::mutex> lock(callback_mutex_);
+        cbs.reserve(on_status_cbs_.size());
+        for (const auto& [id, cb] : on_status_cbs_) {
+            cbs.push_back(cb);
+        }
+    }
+    for (const auto& cb : cbs) {
+        cb(snapshot);
+    }
 }
 
 void Camera::updateConnected(bool connected) {
     bool prev = connected_.exchange(connected);
     if (prev != connected) {
         spdlog::info("Camera {}", connected ? "connected" : "disconnected");
-        std::vector<ConnectedCallback> cbs;
-        {
-            std::lock_guard<std::mutex> lock(callback_mutex_);
-            cbs.reserve(on_connected_cbs_.size());
-            for (const auto& [id, cb] : on_connected_cbs_) {
-                cbs.push_back(cb);
-            }
-        }
-        for (const auto& cb : cbs) {
-            cb(connected);
-        }
+        emitStatus();
     }
 }
 
@@ -101,17 +110,7 @@ void Camera::updateScript(bool running) {
     bool prev = script_running_.exchange(running);
     if (prev != running) {
         spdlog::info("Script {}", running ? "running" : "stopped");
-        std::vector<ScriptCallback> cbs;
-        {
-            std::lock_guard<std::mutex> lock(callback_mutex_);
-            cbs.reserve(on_script_cbs_.size());
-            for (const auto& [id, cb] : on_script_cbs_) {
-                cbs.push_back(cb);
-            }
-        }
-        for (const auto& cb : cbs) {
-            cb(running);
-        }
+        emitStatus();
     }
 }
 
