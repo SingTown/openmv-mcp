@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/SingTown/openmv-mcp/compare/v1.4.0...v1.4.1) (2026-04-15)
+
+
+### Bug Fixes
+
+* link OpenSSL and MSVC CRT statically ([67e71cc](https://github.com/SingTown/openmv-mcp/commit/67e71ccb9aab8500b15ee451390e65060b5f996d))
+
 ## [1.4.0](https://github.com/SingTown/openmv-mcp/compare/v1.3.0...v1.4.0) (2026-04-15)
 
 
