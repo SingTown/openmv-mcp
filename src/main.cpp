@@ -1,3 +1,4 @@
+#include <httplib/httplib.h>
 #include <spdlog/spdlog.h>
 
 #include <atomic>
@@ -32,6 +33,7 @@ static void signalHandler(int /*sig*/) {
 int main(int argc, char* argv[]) {
     int port = 15257;
     bool daemon_mode = false;
+    bool shutdown_mode = false;
     std::string log_path;
 
     spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$] %v");
@@ -48,6 +50,8 @@ int main(int argc, char* argv[]) {
             }
         } else if (arg == "--daemon" || arg == "-d") {
             daemon_mode = true;
+        } else if (arg == "--shutdown") {
+            shutdown_mode = true;
         } else if (arg == "--log" && i + 1 < argc) {
             log_path = argv[++i];
         } else if (arg == "--level" && i + 1 < argc) {
@@ -69,11 +73,27 @@ int main(int argc, char* argv[]) {
             std::cout << "Usage: openmv_mcp_server [OPTIONS]\n"
                       << "  --port, -p <port>  HTTP port (default: 15257)\n"
                       << "  --daemon, -d       Run in background\n"
+                      << "  --shutdown         Stop the running server on the given port\n"
                       << "  --log <path>       Redirect stdout/stderr to file in daemon mode\n"
                       << "  --level <lvl>      Log level: trace|debug|info|warn|error|critical|off (default: info)\n"
                       << "  --version, -v      Print version and exit\n";
             return 0;
         }
+    }
+
+    if (shutdown_mode) {
+        if (!isOpenmvMcpOnPort(port)) {
+            spdlog::info("No openmv-mcp server running on port {}", port);
+            return 0;
+        }
+        httplib::Client cli("127.0.0.1", port);
+        auto resp = cli.Post("/shutdown", "", "application/json");
+        if (resp && resp->status == 200) {
+            spdlog::info("Stopped openmv-mcp server on port {}", port);
+            return 0;
+        }
+        spdlog::error("Failed to stop server on port {}", port);
+        return 1;
     }
 
     mcp::extractEmbeddedResource();

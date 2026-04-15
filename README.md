@@ -22,14 +22,11 @@ openmv_mcp_server --daemon --log /tmp/openmv.log
 Stop a running server:
 
 ```bash
-# Linux / macOS
-kill $(lsof -i :15257 -t)
-
-# Windows
-for /f "tokens=5" %a in ('netstat -ano ^| findstr :15257 ^| findstr LISTENING') do taskkill /PID %a /F
+openmv_mcp_server --shutdown              # default port 15257
+openmv_mcp_server --shutdown --port 9000  # custom port
 ```
 
-Flags: `--daemon, -d` (fork to background), `--log <path>` (redirect stdout/stderr; defaults to `/dev/null` or `NUL`), `--level <lvl>` (log level: `trace|debug|info|warn|error|critical|off`, default `info`).
+Flags: `--daemon, -d` (fork to background), `--shutdown` (stop the running server on the given port), `--log <path>` (redirect stdout/stderr; defaults to `/dev/null` or `NUL`), `--level <lvl>` (log level: `trace|debug|info|warn|error|critical|off`, default `info`).
 
 ## MCP Inspector
 

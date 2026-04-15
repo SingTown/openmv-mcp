@@ -39,6 +39,36 @@ TEST_F(McpServerTest, InvalidJsonRpcVersion) {
     EXPECT_EQ(resp["error"]["code"], -32600);
 }
 
+TEST(McpServerShutdown, PostShutdownStopsServer) {
+    constexpr int kShutdownPort = 18901;
+    mcp::McpServer server(kShutdownPort);
+    ASSERT_TRUE(server.bind());
+    std::thread th([&] { server.start(); });
+
+    mcp::McpClient probe("127.0.0.1", kShutdownPort);
+    bool ready = false;
+    for (int i = 0; i < 100; ++i) {
+        if (probe.isHealthy()) {
+            ready = true;
+            break;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(20));
+    }
+    ASSERT_TRUE(ready);
+
+    httplib::Client http("127.0.0.1", kShutdownPort);
+    auto res = http.Post("/shutdown", "", "application/json");
+    ASSERT_NE(res, nullptr);
+    EXPECT_EQ(res->status, 200);
+    auto body = json::parse(res->body);
+    EXPECT_EQ(body.value("status", ""), "stopping");
+
+    th.join();
+
+    mcp::McpClient probe2("127.0.0.1", kShutdownPort);
+    EXPECT_FALSE(probe2.isHealthy());
+}
+
 TEST_F(McpServerTest, UnknownMethod) {
     httplib::Client http("127.0.0.1", kPort);
     json req = {{"jsonrpc", "2.0"}, {"id", 9999}, {"method", "nonexistent"}};
