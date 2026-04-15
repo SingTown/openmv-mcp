@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.5.0](https://github.com/SingTown/openmv-mcp/compare/v1.4.1...v1.5.0) (2026-04-15)
+
+
+### Features
+
+* **cli:** add --shutdown flag to stop running server ([4dd13ca](https://github.com/SingTown/openmv-mcp/commit/4dd13ca2b4cadb6fdf5b6257a771c13df1ad05ac))
+
 ## [1.4.1](https://github.com/SingTown/openmv-mcp/compare/v1.4.0...v1.4.1) (2026-04-15)
 
 
