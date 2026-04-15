@@ -14,13 +14,14 @@ jobs:
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
       tag_name: ${{ steps.release.outputs.tag_name }}
+      body: ${{ steps.release.outputs.body }}
     steps:
       - uses: googleapis/release-please-action@v4
         id: release
         with:
           release-type: simple
           package-name: openmv-mcp-server
-          draft: true
+          skip-github-release: true
 
   build:
     needs: release-please
@@ -91,12 +92,11 @@ jobs:
           Compress-Archive -Path "dist/$pkg" -DestinationPath "dist/$pkg.zip"
           Remove-Item -Recurse -Force "dist/$pkg"
 
-      - name: Upload to release
-        uses: softprops/action-gh-release@v2
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
         with:
-          tag_name: ${{ needs.release-please.outputs.tag_name }}
-          draft: true
-          files: dist/openmv_mcp_server-${{ env.VERSION }}-${{ matrix.name }}.${{ matrix.ext }}
+          name: ${{ matrix.name }}
+          path: dist/openmv_mcp_server-${{ env.VERSION }}-${{ matrix.name }}.${{ matrix.ext }}
 
   publish:
     needs: [release-please, build]
@@ -105,8 +105,19 @@ jobs:
     permissions:
       contents: write
     steps:
-      - name: Publish release
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+
+      - name: Create release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG: ${{ needs.release-please.outputs.tag_name }}
-        run: gh release edit "$TAG" --draft=false --repo "$GITHUB_REPOSITORY"
+          BODY: ${{ needs.release-please.outputs.body }}
+        run: |
+          gh release create "$TAG" \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "$TAG" \
+            --notes "$BODY" \
+            --verify-tag \
+            dist/*/*
