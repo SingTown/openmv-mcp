@@ -22,10 +22,12 @@ class McpServerTest : public ::testing::Test {
         server_thread_ = std::thread([]() { server_->start(); });
         client_ = std::make_unique<mcp::McpClient>("127.0.0.1", kPort);
         for (int i = 0; i < 100; ++i) {
-            if (client_->isHealthy()) {
+            try {
+                client_->ping();
                 return;
+            } catch (const std::exception&) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(20));
             }
-            std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
         FAIL() << "Server did not start within 2 seconds";
     }

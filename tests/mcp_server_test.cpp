@@ -8,10 +8,6 @@
 // Protocol tests
 // =======================================================================
 
-TEST_F(McpServerTest, Health) {
-    EXPECT_TRUE(client_->isHealthy());
-}
-
 TEST_F(McpServerTest, Initialize) {
     EXPECT_NO_THROW(client_->initialize());
 }
@@ -48,11 +44,13 @@ TEST(McpServerShutdown, PostShutdownStopsServer) {
     mcp::McpClient probe("127.0.0.1", kShutdownPort);
     bool ready = false;
     for (int i = 0; i < 100; ++i) {
-        if (probe.isHealthy()) {
+        try {
+            probe.ping();
             ready = true;
             break;
+        } catch (const std::exception&) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(20));
         }
-        std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
     ASSERT_TRUE(ready);
 
@@ -66,7 +64,7 @@ TEST(McpServerShutdown, PostShutdownStopsServer) {
     th.join();
 
     mcp::McpClient probe2("127.0.0.1", kShutdownPort);
-    EXPECT_FALSE(probe2.isHealthy());
+    EXPECT_THROW(probe2.ping(), std::runtime_error);
 }
 
 TEST_F(McpServerTest, UnknownMethod) {

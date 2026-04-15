@@ -161,11 +161,6 @@ void McpClient::sendNotification(const std::string& method, const json& params) 
     client_.Post("/mcp", notification.dump(), "application/json");
 }
 
-bool McpClient::isHealthy() {
-    auto res = client_.Get("/health");
-    return res && res->status == 200;
-}
-
 json McpClient::buildRequest(const std::string& method, const json& params) {
     return {{"jsonrpc", "2.0"}, {"id", next_id_++}, {"method", method}, {"params", params}};
 }

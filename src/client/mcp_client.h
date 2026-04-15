@@ -72,8 +72,6 @@ class McpClient {
     void cancelTool(int requestId);
     void ping();
 
-    bool isHealthy();
-
  private:
     json sendRequest(const std::string& method, const json& params = json::object());
     void sendNotification(const std::string& method, const json& params = json::object());

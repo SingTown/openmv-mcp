@@ -284,10 +284,6 @@ void McpServer::setupRoutes() {
         }
     });
 
-    server_.Get("/health", [](const httplib::Request&, httplib::Response& res) {
-        res.set_content(R"({"status":"ok"})", "application/json");
-    });
-
     server_.Post("/shutdown", [this](const httplib::Request&, httplib::Response& res) {
         res.set_content(R"({"status":"stopping"})", "application/json");
         std::thread([this] { stop(); }).detach();
