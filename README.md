@@ -33,11 +33,10 @@ Flags: `--daemon, -d` (fork to background), `--log <path>` (redirect stdout/stde
 
 ## MCP Inspector
 
-Use `mcp-inspector.json` with [MCP Inspector](https://github.com/modelcontextprotocol/inspector) for debugging:
-
 ```bash
 npx @modelcontextprotocol/inspector --config mcp-inspector.json
 ```
+
 ## MCP Tools
 
 | Tool | Description |
