@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.4.0](https://github.com/SingTown/openmv-mcp/compare/v1.3.0...v1.4.0) (2026-04-15)
+
+
+### Features
+
+* emit MCP progress notifications for firmware flash/repair ([9cfab51](https://github.com/SingTown/openmv-mcp/commit/9cfab518e1699015d51d04e746991cc1cf896918))
+
+
+### Bug Fixes
+
+* **server:** unblock streaming endpoints on shutdown ([af891fc](https://github.com/SingTown/openmv-mcp/commit/af891fc5b498161933dd949deb1d2ae1abff635b))
+
 ## [1.3.0](https://github.com/SingTown/openmv-mcp/compare/v1.2.0...v1.3.0) (2026-04-13)
 
 
