@@ -35,17 +35,26 @@ TEST_F(DeviceTest, WebSocketTerminal) {
     EXPECT_TRUE(reader.waitForString("ws_hello_test")) << "Did not receive expected terminal output";
 }
 
-TEST_F(DeviceTest, WebSocketFrame) {
-    WsReader reader("ws://127.0.0.1:" + std::to_string(kPort) + "/ws/frame-stream?camera=" + camera_path_);
-    ASSERT_TRUE(reader.start()) << "WebSocket connect failed";
-
+TEST_F(DeviceTest, HttpFrameStream) {
     client_->callTool("script_run", {{"cameraPath", camera_path_}, {"script", kSnapshotScript}}).wait();
 
-    auto is_jpeg = [](const std::string& m) {
-        return m.size() >= 2 && static_cast<uint8_t>(m[0]) == 0xFF && static_cast<uint8_t>(m[1]) == 0xD8;
-    };
+    httplib::Client http("127.0.0.1", kPort);
+    http.set_read_timeout(15, 0);
 
-    ASSERT_TRUE(reader.waitFor(is_jpeg, 15000)) << "No JPEG frame received via WebSocket";
+    std::atomic<bool> got_jpeg{false};
+    std::string buf;
+    auto res = http.Get("/stream/frame?camera=" + camera_path_, [&](const char* data, size_t len) {
+        buf.append(data, len);
+        for (size_t i = 0; i + 1 < buf.size(); ++i) {
+            if (static_cast<uint8_t>(buf[i]) == 0xFF && static_cast<uint8_t>(buf[i + 1]) == 0xD8) {
+                got_jpeg.store(true);
+                return false;
+            }
+        }
+        return true;
+    });
+
+    ASSERT_TRUE(got_jpeg.load()) << "No JPEG frame received via HTTP MJPEG stream";
 }
 
 TEST_F(DeviceTest, ReadFrame) {

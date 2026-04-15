@@ -66,7 +66,12 @@ Real-time push endpoints for live monitoring:
 |---|---|---|
 | `/ws/status?camera=<path>` | Connection & script running status | JSON |
 | `/ws/terminal?camera=<path>` | Terminal output | Text |
-| `/ws/frame-stream?camera=<path>` | Frame buffer | Binary JPEG |
+
+## HTTP Streaming Endpoints
+
+| Endpoint | Data | Format |
+|---|---|---|
+| `GET /stream/frame?camera=<path>` | Frame buffer | `multipart/x-mixed-replace; boundary=frame` (MJPEG) |
 
 
 ## License

@@ -24,6 +24,7 @@ class McpServer {
  private:
     void setupRoutes();
     void setupWebSocket();
+    void setupMjpegStream();
     json handleRequest(const json& request);
     static json handleInitialize(const json& id);
     json handleToolsList(const json& id);

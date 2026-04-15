@@ -40,8 +40,8 @@ static const McpTool TOOL_CAMERA_CONNECT = {
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
         auto cameraPath = args.at("cameraPath").get<std::string>();
         auto camera = Camera::create(cameraPath);
-        auto& cam = ctx.addCamera(cameraPath, std::move(camera));
-        std::thread([&cam]() { cam.info.checkLicense(); }).detach();
+        auto cam = ctx.addCamera(cameraPath, std::move(camera));
+        std::thread([cam]() { cam->info.checkLicense(); }).detach();
         McpContent resp;
         resp.addText(json({{"success", true}}));
         return resp;
@@ -66,8 +66,8 @@ static const McpTool TOOL_CAMERA_INFO = {
     "Get detailed information about a connected camera",
     CAMERA_PATH_SCHEMA,
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
-        auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
-        const auto& si = cam.info;
+        auto cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
+        const auto& si = cam->info;
 
         McpContent resp;
         resp.addText(json({{"cameraPath", si.cameraPath()},
@@ -100,8 +100,8 @@ static const McpTool TOOL_SCRIPT_RUN = {
           "    print(clock.fps())"}}}}},
      {"required", json::array({"cameraPath", "script"})}},
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
-        auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
-        if (!cam.info.licensed()) {
+        auto cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
+        if (!cam->info.licensed()) {
             throw std::runtime_error(
                 "Script execution failed: Unregistered OpenMV Cam detected. "
                 "You need to register your OpenMV Cam with OpenMV for unlimited use. "
@@ -109,7 +109,7 @@ static const McpTool TOOL_SCRIPT_RUN = {
                 "(https://openmv.io/products/openmv-cam-board-key). "
                 "Please use the license_register tool with your board key to register.");
         }
-        cam.execScript(args.at("script").get<std::string>());
+        cam->execScript(args.at("script").get<std::string>());
         McpContent resp;
         resp.addText(json({{"success", true}}));
         return resp;
@@ -121,8 +121,8 @@ static const McpTool TOOL_SCRIPT_STOP = {
     "Stop the currently running script on the camera",
     CAMERA_PATH_SCHEMA,
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
-        auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
-        cam.stopScript();
+        auto cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
+        cam->stopScript();
         McpContent resp;
         resp.addText(json({{"success", true}}));
         return resp;
@@ -134,9 +134,9 @@ static const McpTool TOOL_SCRIPT_OUTPUT = {
     "Read available script output (stdout/stderr) from the camera",
     CAMERA_PATH_SCHEMA,
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
-        auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
+        auto cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
         McpContent resp;
-        resp.addText(json({{"output", cam.readTerminal()}}));
+        resp.addText(json({{"output", cam->readTerminal()}}));
         return resp;
     },
 };
@@ -146,9 +146,9 @@ static const McpTool TOOL_SCRIPT_RUNNING = {
     "Check if a script is currently running on the camera (updated by device events)",
     CAMERA_PATH_SCHEMA,
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
-        auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
+        auto cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
         McpContent resp;
-        resp.addText(json({{"running", cam.scriptRunning()}}));
+        resp.addText(json({{"running", cam->scriptRunning()}}));
         return resp;
     },
 };
@@ -162,8 +162,8 @@ static const McpTool TOOL_SCRIPT_SAVE = {
        {"script", {{"type", "string"}, {"description", "MicroPython source code to save as main.py"}}}}},
      {"required", json::array({"cameraPath", "script"})}},
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
-        auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
-        auto drive = cam.info.drivePath();
+        auto cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
+        auto drive = cam->info.drivePath();
         if (drive.empty()) {
             throw std::runtime_error(
                 "Script save failed: Camera USB drive not found. "
@@ -205,8 +205,8 @@ static const McpTool TOOL_FRAME_CAPTURE = {
     "running. Returns the image as base64-encoded JPEG.",
     CAMERA_PATH_SCHEMA,
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
-        auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
-        auto frame = cam.readFrame();
+        auto cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
+        auto frame = cam->readFrame();
         if (!frame) {
             throw std::runtime_error("No frame available");
         }
@@ -286,8 +286,8 @@ static const McpTool TOOL_LICENSE_REGISTER = {
          {"pattern", "^[0-9A-Z]{5}-[0-9A-Z]{5}-[0-9A-Z]{5}-[0-9A-Z]{5}-[0-9A-Z]{5}$"}}}}},
      {"required", json::array({"cameraPath", "boardKey"})}},
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
-        auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
-        cam.info.registerLicense(args.at("boardKey").get<std::string>());
+        auto cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
+        cam->info.registerLicense(args.at("boardKey").get<std::string>());
         McpContent resp;
         resp.addText(json({{"success", true}}));
         return resp;
@@ -303,8 +303,8 @@ static const McpTool TOOL_FRAME_ENABLE = {
        {"enable", {{"type", "boolean"}, {"description", "true to enable, false to disable"}}}}},
      {"required", json::array({"cameraPath", "enable"})}},
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
-        auto& cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
-        cam.enableFrame(args.at("enable").get<bool>());
+        auto cam = ctx.getCamera(args.at("cameraPath").get<std::string>());
+        cam->enableFrame(args.at("enable").get<bool>());
         McpContent resp;
         resp.addText(json({{"success", true}}));
         return resp;

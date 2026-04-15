@@ -3,6 +3,11 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <atomic>
+#include <condition_variable>
+#include <memory>
+#include <mutex>
+#include <vector>
 
 namespace mcp {
 
@@ -16,13 +21,13 @@ void McpServer::setupWebSocket() {
     server_.WebSocket("/ws/status", [this](const httplib::Request& req, httplib::ws::WebSocket& ws) {
         auto camera_path = req.get_param_value("camera");
         try {
-            auto& cam = ctx_->getCamera(camera_path);
+            auto cam = ctx_->getCamera(camera_path);
             auto ws_active = std::make_shared<std::atomic<bool>>(true);
 
-            json status = {{"connected", cam.isConnected()}, {"script_running", cam.scriptRunning()}};
+            json status = {{"connected", cam->isConnected()}, {"script_running", cam->scriptRunning()}};
             ws.send(status.dump());
 
-            auto dc_id = cam.onConnected([&ws, ws_active](bool connected) {
+            auto dc_id = cam->onConnected([&ws, ws_active](bool connected) {
                 if (!ws_active->load()) {
                     return;
                 }
@@ -34,7 +39,7 @@ void McpServer::setupWebSocket() {
                     ws.send(s.dump());
                 }
             });
-            auto cb_id = cam.onScript([&ws, ws_active](bool running) {
+            auto cb_id = cam->onScript([&ws, ws_active](bool running) {
                 if (!ws_active->load()) {
                     return;
                 }
@@ -49,8 +54,8 @@ void McpServer::setupWebSocket() {
             }
 
             ws_active->store(false);
-            cam.removeCallback(dc_id);
-            cam.removeCallback(cb_id);
+            cam->removeCallback(dc_id);
+            cam->removeCallback(cb_id);
         } catch (const std::exception& e) {
             json err = {{"error", std::string(e.what())}};
             ws.send(err.dump());
@@ -60,16 +65,16 @@ void McpServer::setupWebSocket() {
     server_.WebSocket("/ws/terminal", [this](const httplib::Request& req, httplib::ws::WebSocket& ws) {
         auto camera_path = req.get_param_value("camera");
         try {
-            auto& cam = ctx_->getCamera(camera_path);
+            auto cam = ctx_->getCamera(camera_path);
             auto ws_active = std::make_shared<std::atomic<bool>>(true);
 
-            auto dc_id = cam.onConnected([&ws, ws_active](bool connected) {
+            auto dc_id = cam->onConnected([&ws, ws_active](bool connected) {
                 if (!ws_active->load()) return;
                 if (!connected && ws.is_open()) {
                     ws.close();
                 }
             });
-            auto cb_id = cam.onTerminal([&ws, ws_active](const std::string& text) {
+            auto cb_id = cam->onTerminal([&ws, ws_active](const std::string& text) {
                 if (!ws_active->load()) return;
                 if (ws.is_open()) {
                     ws.send(text);
@@ -81,41 +86,8 @@ void McpServer::setupWebSocket() {
             }
 
             ws_active->store(false);
-            cam.removeCallback(dc_id);
-            cam.removeCallback(cb_id);
-        } catch (const std::exception& e) {
-            json err = {{"error", std::string(e.what())}};
-            ws.send(err.dump());
-        }
-    });
-
-    server_.WebSocket("/ws/frame-stream", [this](const httplib::Request& req, httplib::ws::WebSocket& ws) {
-        auto camera_path = req.get_param_value("camera");
-        try {
-            auto& cam = ctx_->getCamera(camera_path);
-            auto ws_active = std::make_shared<std::atomic<bool>>(true);
-
-            auto dc_id = cam.onConnected([&ws, ws_active](bool connected) {
-                if (!ws_active->load()) return;
-                if (!connected && ws.is_open()) {
-                    ws.close();
-                }
-            });
-            auto cb_id = cam.onFrame([&ws, ws_active](const Frame& frame) {
-                if (!ws_active->load()) return;
-                if (ws.is_open()) {
-                    auto jpeg = frame.toJpeg();
-                    ws.send(reinterpret_cast<const char*>(jpeg.data()), jpeg.size());
-                }
-            });
-
-            std::string msg;
-            while (ws.read(msg) != httplib::ws::ReadResult::Fail) {
-            }
-
-            ws_active->store(false);
-            cam.removeCallback(dc_id);
-            cam.removeCallback(cb_id);
+            cam->removeCallback(dc_id);
+            cam->removeCallback(cb_id);
         } catch (const std::exception& e) {
             json err = {{"error", std::string(e.what())}};
             ws.send(err.dump());
@@ -123,8 +95,80 @@ void McpServer::setupWebSocket() {
     });
 }
 
+void McpServer::setupMjpegStream() {
+    server_.Get("/stream/frame", [this](const httplib::Request& req, httplib::Response& res) {
+        auto camera_path = req.get_param_value("camera");
+        std::shared_ptr<Camera> cam;
+        try {
+            cam = ctx_->getCamera(camera_path);
+        } catch (const std::exception& e) {
+            res.status = 404;
+            res.set_content(json({{"error", std::string(e.what())}}).dump(), "application/json");
+            return;
+        }
+
+        struct State {
+            std::mutex mtx;
+            std::condition_variable cv;
+            std::shared_ptr<const Frame> frame;
+            bool alive = true;
+        };
+        auto state = std::make_shared<State>();
+
+        auto dc_id = cam->onConnected([state](bool connected) {
+            if (connected) {
+                return;
+            }
+            {
+                std::lock_guard<std::mutex> lk(state->mtx);
+                state->alive = false;
+            }
+            state->cv.notify_all();
+        });
+        auto cb_id = cam->onFrame([state](const Frame& frame) {
+            {
+                std::lock_guard<std::mutex> lk(state->mtx);
+                state->frame = std::make_shared<const Frame>(frame);
+            }
+            state->cv.notify_one();
+        });
+
+        res.set_chunked_content_provider(
+            "multipart/x-mixed-replace; boundary=frame",
+            [state](size_t, httplib::DataSink& sink) {
+                std::shared_ptr<const Frame> frame;
+                {
+                    std::unique_lock<std::mutex> lk(state->mtx);
+                    state->cv.wait(lk, [&] { return state->frame || !state->alive; });
+                    if (!state->alive) {
+                        sink.done();
+                        return false;
+                    }
+                    frame = std::move(state->frame);
+                }
+                auto jpeg = frame->toJpeg();
+                std::string chunk =
+                    "--frame\r\nContent-Type: image/jpeg\r\nContent-Length: " + std::to_string(jpeg.size()) +
+                    "\r\n\r\n";
+                chunk.append(reinterpret_cast<const char*>(jpeg.data()), jpeg.size());
+                chunk.append("\r\n");
+                return sink.write(chunk.data(), chunk.size());
+            },
+            [cam, state, dc_id, cb_id](bool) {
+                {
+                    std::lock_guard<std::mutex> lk(state->mtx);
+                    state->alive = false;
+                }
+                state->cv.notify_all();
+                cam->removeCallback(dc_id);
+                cam->removeCallback(cb_id);
+            });
+    });
+}
+
 void McpServer::setupRoutes() {
     setupWebSocket();
+    setupMjpegStream();
 
     server_.Post("/mcp", [this](const httplib::Request& req, httplib::Response& res) {
         spdlog::debug("HTTP POST /mcp request: {}", req.body);
