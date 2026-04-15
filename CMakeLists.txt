@@ -15,6 +15,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if(MSVC)
     add_compile_options(/utf-8)
+    set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>" CACHE STRING "" FORCE)
 endif()
 
 # Core sources (shared between server and test)
@@ -57,6 +58,10 @@ endif()
 set(COMMON_INCLUDES src src/camera_list src/utils 3rdparty 3rdparty/nlohmann-json/single_include)
 
 find_package(Threads REQUIRED)
+set(OPENSSL_USE_STATIC_LIBS ON)
+if(WIN32)
+    set(OPENSSL_MSVC_STATIC_RT ON)
+endif()
 find_package(OpenSSL REQUIRED)
 set(COMMON_LIBS Threads::Threads OpenSSL::SSL OpenSSL::Crypto)
 
@@ -65,7 +70,7 @@ if(APPLE)
 elseif(UNIX)
     list(APPEND COMMON_LIBS udev)
 elseif(WIN32)
-    list(APPEND COMMON_LIBS setupapi cfgmgr32)
+    list(APPEND COMMON_LIBS setupapi cfgmgr32 crypt32 ws2_32 advapi32 user32)
 endif()
 
 # --- Embedded resource (zip packaged into the binary via CMakeRC) ---
