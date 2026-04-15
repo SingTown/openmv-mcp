@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
@@ -14,6 +15,7 @@ namespace mcp {
 McpServer::McpServer(int port) : port_(port), ctx_(std::make_unique<McpContext>()) {}
 
 McpServer::~McpServer() {
+    stopping_->store(true);
     server_.stop();
 }
 
@@ -51,14 +53,19 @@ void McpServer::setupStatusStream() {
         res.set_header("X-Accel-Buffering", "no");
         res.set_chunked_content_provider(
             "text/event-stream",
-            [state](size_t, httplib::DataSink& sink) {
+            [state, stopping = stopping_](size_t, httplib::DataSink& sink) {
                 json event;
                 {
                     std::unique_lock<std::mutex> lk(state->mtx);
-                    state->cv.wait(lk, [&] { return state->has_pending || !state->alive; });
-                    if (!state->has_pending && !state->alive) {
-                        sink.done();
-                        return false;
+                    state->cv.wait_for(lk, std::chrono::milliseconds(200), [&] {
+                        return state->has_pending || !state->alive || stopping->load();
+                    });
+                    if (!state->has_pending) {
+                        if (!state->alive || stopping->load() || !sink.is_writable()) {
+                            sink.done();
+                            return false;
+                        }
+                        return true;
                     }
                     event = std::move(state->pending);
                     state->pending = json::object();
@@ -110,14 +117,19 @@ void McpServer::setupTerminalStream() {
         res.set_header("X-Accel-Buffering", "no");
         res.set_chunked_content_provider(
             "text/plain; charset=utf-8",
-            [state](size_t, httplib::DataSink& sink) {
+            [state, stopping = stopping_](size_t, httplib::DataSink& sink) {
                 std::string chunk;
                 {
                     std::unique_lock<std::mutex> lk(state->mtx);
-                    state->cv.wait(lk, [&] { return !state->pending.empty() || !state->alive; });
-                    if (!state->alive && state->pending.empty()) {
-                        sink.done();
-                        return false;
+                    state->cv.wait_for(lk, std::chrono::milliseconds(200), [&] {
+                        return !state->pending.empty() || !state->alive || stopping->load();
+                    });
+                    if (state->pending.empty()) {
+                        if (!state->alive || stopping->load() || !sink.is_writable()) {
+                            sink.done();
+                            return false;
+                        }
+                        return true;
                     }
                     chunk.swap(state->pending);
                 }
@@ -164,14 +176,19 @@ void McpServer::setupMjpegStream() {
 
         res.set_chunked_content_provider(
             "multipart/x-mixed-replace; boundary=frame",
-            [state](size_t, httplib::DataSink& sink) {
+            [state, stopping = stopping_](size_t, httplib::DataSink& sink) {
                 std::shared_ptr<const Frame> frame;
                 {
                     std::unique_lock<std::mutex> lk(state->mtx);
-                    state->cv.wait(lk, [&] { return state->frame || !state->alive; });
-                    if (!state->alive) {
-                        sink.done();
-                        return false;
+                    state->cv.wait_for(lk, std::chrono::milliseconds(200), [&] {
+                        return state->frame || !state->alive || stopping->load();
+                    });
+                    if (!state->frame) {
+                        if (!state->alive || stopping->load() || !sink.is_writable()) {
+                            sink.done();
+                            return false;
+                        }
+                        return true;
                     }
                     frame = std::move(state->frame);
                 }
@@ -289,6 +306,7 @@ void McpServer::start() {
 }
 
 void McpServer::stop() {
+    stopping_->store(true);
     server_.stop();
 }
 

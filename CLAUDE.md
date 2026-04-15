@@ -72,7 +72,7 @@ extracted at runtime to `$TMPDIR/openmv-mcp-<crc>/` (idempotent across runs).
 
 ### Core Modules
 
-- **MCP Server**: `src/server/mcp_server.h/.cpp` — HTTP routing, JSON-RPC dispatch, WebSocket endpoints
+- **MCP Server**: `src/server/mcp_server.h/.cpp` — HTTP routing, JSON-RPC dispatch, HTTP streaming endpoints (status / terminal / MJPEG)
 - **MCP Tool**: `src/server/mcp_tool.h/.cpp` — tool definitions (`ALL_MCP_TOOLS` vector) and tool call dispatch
 - **MCP Context**: `src/server/mcp_context.h` — camera instance management, streaming message support
 - **Camera**: `src/camera.h/.cpp` — abstract camera class with factory pattern (`Camera::create()`) and callback system (connected/script/terminal/frame)

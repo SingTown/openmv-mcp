@@ -2,6 +2,7 @@
 
 #include <httplib/httplib.h>
 
+#include <atomic>
 #include <memory>
 #include <nlohmann/json.hpp>
 
@@ -36,6 +37,7 @@ class McpServer {
 
     int port_;
     httplib::Server server_;
+    std::shared_ptr<std::atomic<bool>> stopping_ = std::make_shared<std::atomic<bool>>(false);
     std::unique_ptr<McpContext> ctx_;
 };
 
