@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.4.1](https://github.com/SingTown/openmv-mcp/compare/v1.4.0...v1.4.1) (2026-04-15)
+
+
+### Bug Fixes
+
+* trigger release workflow smoke test ([0fc3d9d](https://github.com/SingTown/openmv-mcp/commit/0fc3d9d6f2144ec13c62d248d5ff2cac6c2c9fc9))
+
 ## [1.4.0](https://github.com/SingTown/openmv-mcp/compare/v1.3.0...v1.4.0) (2026-04-15)
 
 
