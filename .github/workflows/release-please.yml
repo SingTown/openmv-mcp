@@ -61,7 +61,7 @@ jobs:
           Expand-Archive -Path $env:TEMP\openmv-ide-resources.zip -DestinationPath resource -Force
 
       - name: Configure
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_CLANG_TIDY=OFF -DOPENMV_MCP_VERSION=${{ env.VERSION }}
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_CLANG_TIDY=OFF
 
       - name: Build
         run: cmake --build build --config Release -j

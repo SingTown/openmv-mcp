@@ -11,6 +11,8 @@
 #include <thread>
 #include <vector>
 
+#include "openmv_version.h"
+
 namespace mcp {
 
 McpServer::McpServer(int port) : port_(port), ctx_(std::make_unique<McpContext>()) {}

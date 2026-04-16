@@ -9,6 +9,7 @@
 
 #include "client/mcp_client.h"
 #include "daemonize.h"
+#include "openmv_version.h"
 #include "resource.h"
 #include "server/mcp_server.h"
 
@@ -63,11 +64,7 @@ int main(int argc, char* argv[]) {
             }
             spdlog::set_level(lv);
         } else if (arg == "--version" || arg == "-v") {
-#ifdef OPENMV_MCP_VERSION
             std::cout << OPENMV_MCP_VERSION << '\n';
-#else
-            std::cout << "unknown\n";
-#endif
             return 0;
         } else if (arg == "--help" || arg == "-h") {
             std::cout << "Usage: openmv_mcp_server [OPTIONS]\n"

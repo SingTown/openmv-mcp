@@ -3,6 +3,8 @@
 #include <sstream>
 #include <utility>
 
+#include "openmv_version.h"
+
 namespace mcp {
 
 // --- ToolResponse ---
