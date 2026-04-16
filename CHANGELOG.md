@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.1.0](https://github.com/SingTown/openmv-mcp/compare/v2.0.0...v2.1.0) (2026-04-16)
+
+
+### Features
+
+* **vscode:** add camera connect/disconnect commands with status bar ([4b1b5e4](https://github.com/SingTown/openmv-mcp/commit/4b1b5e47d7e9caec133f38e7f618aee6f0f342c8))
+* **vscode:** add live framebuffer webview in activity bar ([382df01](https://github.com/SingTown/openmv-mcp/commit/382df01480e7191a89b2caebdd0eebe125d34e69))
+* **vscode:** add run/stop script commands with status bar ([6c125cc](https://github.com/SingTown/openmv-mcp/commit/6c125ccf0f2e7b42a4fdfbe3857fd8f75d4b7710))
+* **vscode:** add save frame button to framebuffer view ([f60c072](https://github.com/SingTown/openmv-mcp/commit/f60c0723f157da049a19e1833b44b756819941d1))
+* **vscode:** stream camera terminal output to OpenMV output channel ([cac92fb](https://github.com/SingTown/openmv-mcp/commit/cac92fb1042224551a60097572898041ca2a35e2))
+
+
+### Bug Fixes
+
+* **server:** make camera_connect idempotent for already-connected camera ([bba33f9](https://github.com/SingTown/openmv-mcp/commit/bba33f99e4bee3d3cc005ab89902cc572b03574a))
+
 ## [2.0.0](https://github.com/SingTown/openmv-mcp/compare/v1.5.0...v2.0.0) (2026-04-16)
 
 
