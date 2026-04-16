@@ -1,0 +1,11 @@
+{
+  "packages": {
+    ".": {
+      "release-type": "simple",
+      "package-name": "openmv-mcp-server",
+      "extra-files": [
+        "vscode-extension/package.json"
+      ]
+    }
+  }
+}

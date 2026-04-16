@@ -67,3 +67,28 @@ jobs:
         with:
           name: openmv_mcp_server-windows
           path: build/Release/openmv_mcp_server.exe
+
+  vscode-extension:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        working-directory: vscode-extension
+        run: pnpm install
+
+      - name: Lint
+        working-directory: vscode-extension
+        run: pnpm run lint
+
+      - name: Build
+        working-directory: vscode-extension
+        run: pnpm run build

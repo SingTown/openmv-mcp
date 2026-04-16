@@ -1,0 +1,42 @@
+{
+  "name": "openmv",
+  "displayName": "OpenMV",
+  "description": "OpenMV VS Code Extension",
+  "version": "1.5.0",
+  "publisher": "openmv",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SingTown/openmv-mcp.git",
+    "directory": "vscode-extension"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "openmv.helloWorld",
+        "title": "OpenMV: Hello World"
+      }
+    ]
+  },
+  "scripts": {
+    "build": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "lint": "biome check src/",
+    "format": "biome format --write src/",
+    "check": "biome check --write src/",
+    "package": "vsce package"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.12",
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^3.9.0",
+    "typescript": "^5.3.0"
+  }
+}
