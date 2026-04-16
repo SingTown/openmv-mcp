@@ -79,6 +79,9 @@ class OpenMV extends EventEmitter {
                     return first.text as unknown as T;
                 }
             }
+            if (first.type === "image") {
+                return first as unknown as T;
+            }
         }
         return result as T;
     }
@@ -118,6 +121,16 @@ class OpenMV extends EventEmitter {
         const p = this.#connectedPath;
         if (!p) throw new Error("camera not connected");
         await this.#callTool("frame_enable", { cameraPath: p, enable });
+    }
+
+    async captureFrame(): Promise<string | null> {
+        const p = this.#connectedPath;
+        if (!p) return null;
+        const result = await this.#callTool<{ type?: string; data?: string }>(
+            "frame_capture",
+            { cameraPath: p },
+        );
+        return result?.data ?? null;
     }
 
     #setConnected(connected: boolean) {

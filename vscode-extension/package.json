@@ -40,23 +40,49 @@
         "command": "openmv.stopScript",
         "title": "Stop Script",
         "category": "OpenMV"
+      },
+      {
+        "command": "openmv.selectFrameSaveFolder",
+        "title": "Select Frame Save Folder",
+        "category": "OpenMV",
+        "icon": "$(folder)"
+      },
+      {
+        "command": "openmv.saveFrame",
+        "title": "Save Frame",
+        "category": "OpenMV",
+        "icon": "$(save)"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "openmv.frameActivitybar",
+          "id": "openmv-frameActivitybar",
           "title": "OpenMV",
           "icon": "resource/framebuffer.svg"
         }
       ]
     },
     "views": {
-      "openmv.frameActivitybar": [
+      "openmv-frameActivitybar": [
         {
-          "id": "openmv.frameView",
-          "name": "Framebuffer",
+          "id": "openmv-frameView",
+          "name": "Frame",
           "type": "webview"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "openmv.selectFrameSaveFolder",
+          "when": "view == openmv-frameView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "openmv.saveFrame",
+          "when": "view == openmv-frameView",
+          "group": "navigation@2"
         }
       ]
     }
