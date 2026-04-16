@@ -1,5 +1,18 @@
 # Changelog
 
+## [2.0.0](https://github.com/SingTown/openmv-mcp/compare/v1.5.0...v2.0.0) (2026-04-16)
+
+
+### Features
+
+* **vscode:** add VS Code extension scaffold ([863c1c6](https://github.com/SingTown/openmv-mcp/commit/863c1c64d556e046d079fbe209d03f9737f5edd2))
+* **vscode:** auto-download and launch MCP server on activation ([35e7c1b](https://github.com/SingTown/openmv-mcp/commit/35e7c1bf11ac1a093f46f3a0fce2787f20bd4afd))
+
+
+### Build System
+
+* **release:** upload raw binaries instead of archives ([7e49b94](https://github.com/SingTown/openmv-mcp/commit/7e49b9461af91abe73f45c8b212f7a248d5a30a0))
+
 ## [1.5.0](https://github.com/SingTown/openmv-mcp/compare/v1.4.1...v1.5.0) (2026-04-15)
 
 
