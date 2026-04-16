@@ -29,6 +29,10 @@ class OpenMV extends EventEmitter {
         return this.#running;
     }
 
+    getConnectedPath(): string | null {
+        return this.#connectedPath;
+    }
+
     #ensureReady(): Promise<void> {
         if (!this.#ready) {
             this.#ready = this.#client
@@ -170,7 +174,6 @@ class OpenMV extends EventEmitter {
                 while (true) {
                     const { done, value } = await reader.read();
                     if (done) break;
-                    if (!(value instanceof Uint8Array)) continue;
                     buf += decoder.decode(value, { stream: true });
                     while (true) {
                         const idx = buf.search(/\r?\n\r?\n/);
