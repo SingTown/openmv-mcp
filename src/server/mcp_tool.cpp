@@ -39,10 +39,14 @@ static const McpTool TOOL_CAMERA_CONNECT = {
     CAMERA_PATH_SCHEMA,
     [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
         auto cameraPath = args.at("cameraPath").get<std::string>();
+        McpContent resp;
+        if (ctx.hasCamera(cameraPath)) {
+            resp.addText(json({{"success", true}}));
+            return resp;
+        }
         auto camera = Camera::create(cameraPath);
         auto cam = ctx.addCamera(cameraPath, std::move(camera));
         std::thread([cam]() { cam->info.checkLicense(); }).detach();
-        McpContent resp;
         resp.addText(json({{"success", true}}));
         return resp;
     },
