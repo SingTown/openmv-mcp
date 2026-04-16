@@ -110,6 +110,7 @@ export function initStatusBar(context: vscode.ExtensionContext) {
             return;
         }
         try {
+            await openmv.enableFrame(true);
             await openmv.runScript(code);
         } catch (err) {
             vscode.window.showErrorMessage(toMessage(err));

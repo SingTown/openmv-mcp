@@ -41,7 +41,25 @@
         "title": "Stop Script",
         "category": "OpenMV"
       }
-    ]
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "openmv.frameActivitybar",
+          "title": "OpenMV",
+          "icon": "resource/framebuffer.svg"
+        }
+      ]
+    },
+    "views": {
+      "openmv.frameActivitybar": [
+        {
+          "id": "openmv.frameView",
+          "name": "Framebuffer",
+          "type": "webview"
+        }
+      ]
+    }
   },
   "scripts": {
     "build": "pnpm run typecheck && node esbuild.js --production",
