@@ -1,32 +1,45 @@
-# OpenMV VS Code Extension
+# OpenMV Extension for VS Code
 
-VS Code extension for OpenMV.
+![OpenMV](https://img.shields.io/badge/OpenMV-1F73BF)
 
-## Development
+**OpenMV Extension** makes it easy to program your OpenMV Cam.
+It features a powerful text editor, debug terminal, and frame buffer viewer.
 
-### Install Dependencies
+**OpenMV Extension** is developed and maintained by SingTown LLC.
+Need help or support with this extension? Please contact SingTown.
 
-```bash
-pnpm install
-```
+# Note
 
-### Build
+The code intelligence feature conflicts with the ms-python extension. 
+Please disable the ms-python plugin before using the extension.
 
-```bash
-pnpm run build
-pnpm run watch    # watch mode
-```
+# Feature
 
-### Code Quality
+- [x] 🔗 Connect/Disconnect OpenMV Cam
+- [ ] ▶️ Run/Stop Script
+- [ ] 📸️ Realtime framebuffer
+- [ ] 🖥️ Show terminal message
+- [ ] 🖥️ Install driver
+- [ ] 🖥️ mpy-cross compile
+- [ ] 💡 Code intelligence
+- [ ] 💡 Code intelligence i18n
+- [ ] 🌰 Code example
+- [ ] 🌰 Code example search
+- [ ] 🌰 Code example i18n
+- [ ] 💾 Save current script to OpenMV Cam
+- [ ] 📋 API Document
+- [ ] 📋 API Document i18n
+- [ ] ☁️ Upgrade firmware
+- [ ] 📖 Register license
+- [ ] 📺 Tutorial
+- [ ] 📊 Threshold tool
 
-```bash
-pnpm run lint     # check with biome
-pnpm run format   # auto-format with biome
-pnpm run check    # lint + format (auto-fix)
-```
 
-### Run & Debug
+<img style='width: 100%' src="https://s1.imagehub.cc/images/2024/11/19/dca03f73463d86b4184f3f7b68547226.gif" alt="screenshot.gif" border="0" />
 
-1. Open `vscode-extension/` in VS Code
-2. Press `F5` to launch the Extension Development Host
-3. Open Command Palette (`Cmd+Shift+P`) and run "OpenMV: Hello World"
+## Documentation
+
+The documentation for the OpenMV is available on the [official website](https://openmv.io).
+
+- [📖 Documentation](https://docs.openmv.io)
+- [📖 Documentation [中文]](https://docs.singtown.com/micropython/zh/latest/openmvcam/index.html)

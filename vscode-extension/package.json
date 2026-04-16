@@ -19,6 +19,20 @@
     "onStartupFinished"
   ],
   "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "openmv.connect",
+        "title": "Connect",
+        "category": "OpenMV"
+      },
+      {
+        "command": "openmv.disconnect",
+        "title": "Disconnect",
+        "category": "OpenMV"
+      }
+    ]
+  },
   "scripts": {
     "build": "pnpm run typecheck && node esbuild.js --production",
     "watch": "node esbuild.js --watch",

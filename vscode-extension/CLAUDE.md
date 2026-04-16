@@ -29,11 +29,3 @@ pnpm run check      # biome (auto-fix) + typecheck
 1. Open `vscode-extension/` in VS Code
 2. Press `F5` to launch the Extension Development Host
 3. The extension activates on startup, downloads the MCP server if needed, and launches it as a daemon
-
-## Architecture
-
-This is a VS Code extension for OpenMV. Uses esbuild for bundling (output to `dist/`). Entry point is `src/extension.ts`.
-
-- **src/extension.ts** — `activate()` calls `ensureServer()` to download and start the MCP server
-- **src/server-process.ts** — MCP server binary download, daemon launch, and health check via MCP ping
-- **src/utils.ts** — `downloadFile()` with progress notification
