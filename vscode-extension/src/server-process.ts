@@ -4,7 +4,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import type * as vscode from "vscode";
+import * as vscode from "vscode";
 import { downloadFile } from "./utils";
 
 export const MCP_HOST = "127.0.0.1";
@@ -98,6 +98,9 @@ export async function ensureServer(
     const existing = await pingInfo();
     if (isCurrent(existing)) return;
     if (existing.ok && existing.name === SERVER_NAME) {
+        vscode.window.showInformationMessage(
+            `Restarting openmv-mcp server: ${existing.version} → ${MCP_VERSION}`,
+        );
         await shutdownRunningServer();
     }
 

@@ -42,6 +42,11 @@
         "category": "OpenMV"
       },
       {
+        "command": "openmv.drive",
+        "title": "Open Camera Drive",
+        "category": "OpenMV"
+      },
+      {
         "command": "openmv.selectFrameSaveFolder",
         "title": "Select Frame Save Folder",
         "category": "OpenMV",

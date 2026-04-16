@@ -9,10 +9,23 @@ export type CameraListInfo = {
     connected: boolean;
 };
 
+export type CameraInfo = {
+    cameraPath: string;
+    drivePath: string;
+    boardId: string;
+    boardType: string;
+    name: string;
+    sensor: string;
+    fwVersion: string;
+    latestFwVersion: string;
+    protocolVersion: number;
+};
+
 class OpenMV extends EventEmitter {
     #connectedPath: string | null = null;
     #connected = false;
     #running = false;
+    #info: CameraInfo | null = null;
     #statusAbort: AbortController | null = null;
     #client!: Client;
     #ready: Promise<void> | null = null;
@@ -90,10 +103,17 @@ class OpenMV extends EventEmitter {
         return await this.#callTool<CameraListInfo[]>("camera_list", {});
     }
 
+    getInfo(): CameraInfo | null {
+        return this.#info;
+    }
+
     async connect(path: string) {
         await this.#callTool("camera_connect", { cameraPath: path });
         this.#closeStatusStream();
         this.#connectedPath = path;
+        this.#info = await this.#callTool<CameraInfo>("camera_info", {
+            cameraPath: path,
+        });
         void this.#openStatusStream();
     }
 
@@ -140,6 +160,7 @@ class OpenMV extends EventEmitter {
         }
         if (!connected) {
             this.#setRunning(false);
+            this.#info = null;
         }
     }
 

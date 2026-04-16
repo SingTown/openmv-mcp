@@ -60,14 +60,22 @@ export function initStatusBar(context: vscode.ExtensionContext) {
     stopStatusBarItem.text = "$(debug-stop) Stop";
     stopStatusBarItem.command = "openmv.stopScript";
 
+    const driveStatusBarItem = vscode.window.createStatusBarItem(
+        vscode.StatusBarAlignment.Right,
+        99,
+    );
+    driveStatusBarItem.command = "openmv.drive";
+
     context.subscriptions.push(connectStatusBarItem);
     context.subscriptions.push(disconnectStatusBarItem);
     context.subscriptions.push(runStatusBarItem);
     context.subscriptions.push(stopStatusBarItem);
+    context.subscriptions.push(driveStatusBarItem);
     connectStatusBarItem.show();
     disconnectStatusBarItem.hide();
     runStatusBarItem.hide();
     stopStatusBarItem.hide();
+    driveStatusBarItem.hide();
 
     async function connectCommand() {
         try {
@@ -129,11 +137,18 @@ export function initStatusBar(context: vscode.ExtensionContext) {
         }
     }
 
+    async function driveCommand() {
+        const drive = openmv.getInfo()?.drivePath;
+        if (!drive) return;
+        await vscode.env.openExternal(vscode.Uri.file(drive));
+    }
+
     context.subscriptions.push(
         vscode.commands.registerCommand("openmv.connect", connectCommand),
         vscode.commands.registerCommand("openmv.disconnect", disconnectCommand),
         vscode.commands.registerCommand("openmv.runScript", runCommand),
         vscode.commands.registerCommand("openmv.stopScript", stopCommand),
+        vscode.commands.registerCommand("openmv.drive", driveCommand),
     );
 
     function syncButtons() {
@@ -142,6 +157,7 @@ export function initStatusBar(context: vscode.ExtensionContext) {
             disconnectStatusBarItem.hide();
             runStatusBarItem.hide();
             stopStatusBarItem.hide();
+            driveStatusBarItem.hide();
             return;
         }
         connectStatusBarItem.hide();
@@ -152,6 +168,13 @@ export function initStatusBar(context: vscode.ExtensionContext) {
         } else {
             runStatusBarItem.show();
             stopStatusBarItem.hide();
+        }
+        const drive = openmv.getInfo()?.drivePath;
+        if (drive) {
+            driveStatusBarItem.text = `$(file-directory) ${drive}`;
+            driveStatusBarItem.show();
+        } else {
+            driveStatusBarItem.hide();
         }
     }
 
