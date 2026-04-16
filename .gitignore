@@ -4,3 +4,6 @@
 .vscode
 build
 cmake_test_discovery_*.json
+vscode-extension/dist
+vscode-extension/node_modules
+vscode-extension/*.vsix
