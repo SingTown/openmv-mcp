@@ -11,12 +11,22 @@ export type CameraListInfo = {
 
 class OpenMV extends EventEmitter {
     #connectedPath: string | null = null;
+    #connected = false;
+    #running = false;
     #statusAbort: AbortController | null = null;
     #client!: Client;
     #ready: Promise<void> | null = null;
 
     init(version: string) {
         this.#client = new Client({ name: "openmv-vscode", version });
+    }
+
+    isConnected(): boolean {
+        return this.#connected;
+    }
+
+    isRunning(): boolean {
+        return this.#running;
     }
 
     #ensureReady(): Promise<void> {
@@ -85,7 +95,36 @@ class OpenMV extends EventEmitter {
         if (!p) return;
         await this.#callTool("camera_disconnect", { cameraPath: p });
         this.#closeStatusStream();
-        this.emit("connected", false);
+        this.#setConnected(false);
+    }
+
+    async runScript(script: string) {
+        const p = this.#connectedPath;
+        if (!p) throw new Error("camera not connected");
+        await this.#callTool("script_run", { cameraPath: p, script });
+    }
+
+    async stopScript() {
+        const p = this.#connectedPath;
+        if (!p) throw new Error("camera not connected");
+        await this.#callTool("script_stop", { cameraPath: p });
+    }
+
+    #setConnected(connected: boolean) {
+        if (this.#connected !== connected) {
+            this.#connected = connected;
+            this.emit("connected", connected);
+        }
+        if (!connected) {
+            this.#setRunning(false);
+        }
+    }
+
+    #setRunning(running: boolean) {
+        if (this.#running !== running) {
+            this.#running = running;
+            this.emit("running", running);
+        }
     }
 
     async #openStatusStream() {
@@ -118,7 +157,10 @@ class OpenMV extends EventEmitter {
                     if (!msg.connected) {
                         this.#closeStatusStream();
                     }
-                    this.emit("connected", msg.connected);
+                    this.#setConnected(msg.connected);
+                }
+                if (typeof msg.script_running === "boolean") {
+                    this.#setRunning(msg.script_running);
                 }
             };
             const decoder = new TextDecoder();
@@ -146,7 +188,7 @@ class OpenMV extends EventEmitter {
             if (this.#statusAbort === ctrl) {
                 if (this.#connectedPath === cameraPath) {
                     this.#closeStatusStream();
-                    this.emit("connected", false);
+                    this.#setConnected(false);
                 }
             }
             this.emit("error", e);

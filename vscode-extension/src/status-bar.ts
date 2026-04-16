@@ -14,6 +14,23 @@ function toMessage(err: unknown): string {
     return err instanceof Error ? err.message : String(err);
 }
 
+function getCurrentEditorText(languageId = "python"): string | null {
+    let editor = vscode.window.activeTextEditor;
+    if (editor?.document.languageId !== languageId) {
+        editor = undefined;
+    }
+    if (!editor) {
+        editor = vscode.window.visibleTextEditors.find(
+            (x) => x.document.languageId === languageId,
+        );
+    }
+    if (!editor) {
+        vscode.window.showInformationMessage("Please open a Python file");
+        return null;
+    }
+    return editor.document.getText();
+}
+
 export function initStatusBar(context: vscode.ExtensionContext) {
     const connectStatusBarItem = vscode.window.createStatusBarItem(
         vscode.StatusBarAlignment.Left,
@@ -29,10 +46,28 @@ export function initStatusBar(context: vscode.ExtensionContext) {
     disconnectStatusBarItem.text = "$(sync-ignored) Disconnect";
     disconnectStatusBarItem.command = "openmv.disconnect";
 
+    const runStatusBarItem = vscode.window.createStatusBarItem(
+        vscode.StatusBarAlignment.Left,
+        10,
+    );
+    runStatusBarItem.text = "$(debug-start) Run";
+    runStatusBarItem.command = "openmv.runScript";
+
+    const stopStatusBarItem = vscode.window.createStatusBarItem(
+        vscode.StatusBarAlignment.Left,
+        10,
+    );
+    stopStatusBarItem.text = "$(debug-stop) Stop";
+    stopStatusBarItem.command = "openmv.stopScript";
+
     context.subscriptions.push(connectStatusBarItem);
     context.subscriptions.push(disconnectStatusBarItem);
+    context.subscriptions.push(runStatusBarItem);
+    context.subscriptions.push(stopStatusBarItem);
     connectStatusBarItem.show();
     disconnectStatusBarItem.hide();
+    runStatusBarItem.hide();
+    stopStatusBarItem.hide();
 
     async function connectCommand() {
         try {
@@ -65,20 +100,62 @@ export function initStatusBar(context: vscode.ExtensionContext) {
         }
     }
 
+    async function runCommand() {
+        if (!openmv.isConnected()) {
+            vscode.window.showErrorMessage("Please connect a camera first");
+            return;
+        }
+        const code = getCurrentEditorText();
+        if (!code) {
+            return;
+        }
+        try {
+            await openmv.runScript(code);
+        } catch (err) {
+            vscode.window.showErrorMessage(toMessage(err));
+        }
+    }
+
+    async function stopCommand() {
+        if (!openmv.isConnected()) {
+            vscode.window.showErrorMessage("Please connect a camera first");
+            return;
+        }
+        try {
+            await openmv.stopScript();
+        } catch (err) {
+            vscode.window.showErrorMessage(toMessage(err));
+        }
+    }
+
     context.subscriptions.push(
         vscode.commands.registerCommand("openmv.connect", connectCommand),
         vscode.commands.registerCommand("openmv.disconnect", disconnectCommand),
+        vscode.commands.registerCommand("openmv.runScript", runCommand),
+        vscode.commands.registerCommand("openmv.stopScript", stopCommand),
     );
 
-    openmv.on("connected", (isConnected: boolean) => {
-        if (isConnected) {
-            connectStatusBarItem.hide();
-            disconnectStatusBarItem.show();
-        } else {
+    function syncButtons() {
+        if (!openmv.isConnected()) {
             connectStatusBarItem.show();
             disconnectStatusBarItem.hide();
+            runStatusBarItem.hide();
+            stopStatusBarItem.hide();
+            return;
         }
-    });
+        connectStatusBarItem.hide();
+        disconnectStatusBarItem.show();
+        if (openmv.isRunning()) {
+            runStatusBarItem.hide();
+            stopStatusBarItem.show();
+        } else {
+            runStatusBarItem.show();
+            stopStatusBarItem.hide();
+        }
+    }
+
+    openmv.on("connected", syncButtons);
+    openmv.on("running", syncButtons);
 
     openmv.on("error", (err: unknown) => {
         vscode.window.showErrorMessage(`OpenMV: ${toMessage(err)}`);

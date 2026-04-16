@@ -16,7 +16,7 @@ Please disable the ms-python plugin before using the extension.
 # Feature
 
 - [x] 🔗 Connect/Disconnect OpenMV Cam
-- [ ] ▶️ Run/Stop Script
+- [x] ▶️ Run/Stop Script
 - [ ] 📸️ Realtime framebuffer
 - [ ] 🖥️ Show terminal message
 - [ ] 🖥️ Install driver

@@ -30,6 +30,16 @@
         "command": "openmv.disconnect",
         "title": "Disconnect",
         "category": "OpenMV"
+      },
+      {
+        "command": "openmv.runScript",
+        "title": "Run Script",
+        "category": "OpenMV"
+      },
+      {
+        "command": "openmv.stopScript",
+        "title": "Stop Script",
+        "category": "OpenMV"
       }
     ]
   },
