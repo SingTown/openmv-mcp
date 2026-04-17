@@ -47,19 +47,6 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libssl-dev libudev-dev cmake
 
-      - name: Download resources (Unix)
-        if: runner.os != 'Windows'
-        run: |
-          curl -L -o /tmp/openmv-ide-resources.zip https://github.com/openmv/openmv-ide/releases/download/v4.8.9/openmv-ide-resources-4.8.9.zip
-          unzip -o /tmp/openmv-ide-resources.zip -d resource
-
-      - name: Download resources (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Invoke-WebRequest -Uri https://github.com/openmv/openmv-ide/releases/download/v4.8.9/openmv-ide-resources-4.8.9.zip -OutFile $env:TEMP\openmv-ide-resources.zip
-          Expand-Archive -Path $env:TEMP\openmv-ide-resources.zip -DestinationPath resource -Force
-
       - name: Configure
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_CLANG_TIDY=OFF
 

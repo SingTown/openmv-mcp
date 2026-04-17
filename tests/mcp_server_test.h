@@ -1,7 +1,6 @@
 #pragma once
 
 #include "client/mcp_client.h"
-#include "resource.h"
 #include "server/mcp_server.h"
 
 #include <gtest/gtest.h>
@@ -16,7 +15,6 @@ using json = nlohmann::json;
 class McpServerTest : public ::testing::Test {
  protected:
     static void SetUpTestSuite() {
-        mcp::extractEmbeddedResource();
         server_ = std::make_unique<mcp::McpServer>(kPort);
         ASSERT_TRUE(server_->bind()) << "Failed to bind test port " << kPort;
         server_thread_ = std::thread([]() { server_->start(); });

@@ -83,7 +83,7 @@ TEST_F(McpServerTest, UnknownMethod) {
 
 TEST_F(McpServerTest, ToolsList) {
     auto tools = client_->listTools();
-    EXPECT_EQ(tools.size(), 16U);
+    EXPECT_EQ(tools.size(), 14U);
 
     std::set<std::string> names;
     for (const auto& t : tools) names.insert(t.name);
@@ -100,8 +100,7 @@ TEST_F(McpServerTest, ToolsList) {
     EXPECT_TRUE(names.count("frame_capture"));
     EXPECT_TRUE(names.count("frame_enable"));
     EXPECT_TRUE(names.count("script_save"));
-    EXPECT_TRUE(names.count("firmware_flash"));
-    EXPECT_TRUE(names.count("firmware_repair"));
+    EXPECT_TRUE(names.count("license_register"));
 }
 
 TEST_F(McpServerTest, UnknownTool) {

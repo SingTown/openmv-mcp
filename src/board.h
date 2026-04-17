@@ -1,8 +1,9 @@
 #pragma once
 
 #include <cstdint>
-#include <filesystem>
+#include <cstdio>
 #include <map>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -15,13 +16,6 @@ struct Board {
     std::string boardType;
     std::string name;
     std::string archString;
-    std::string factoryDetectCommand;
-    std::string factoryDetectMessage;
-    std::string bootloaderDetectCommand;
-    std::string bootloaderDetectMessage;
-    std::vector<std::string> bootloaderCommands;
-    std::vector<std::string> firmwareCommands;
-    std::filesystem::path firmwareDir;
     bool checkLicense = false;
 };
 

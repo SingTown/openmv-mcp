@@ -10,7 +10,6 @@
 #include "client/mcp_client.h"
 #include "daemonize.h"
 #include "openmv_version.h"
-#include "resource.h"
 #include "server/mcp_server.h"
 
 static std::atomic<mcp::McpServer*> g_server{nullptr};
@@ -92,8 +91,6 @@ int main(int argc, char* argv[]) {
         spdlog::error("Failed to stop server on port {}", port);
         return 1;
     }
-
-    mcp::extractEmbeddedResource();
 
     mcp::McpServer server(port);
     if (!server.bind()) {
