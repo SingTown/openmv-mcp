@@ -6,3 +6,4 @@ biome.json
 esbuild.js
 .claude/**
 CLAUDE.md
+tools/mcp-server/**

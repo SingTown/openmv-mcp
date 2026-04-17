@@ -24,51 +24,8 @@ jobs:
   build:
     needs: release-please
     if: ${{ needs.release-please.outputs.release_created }}
-    strategy:
-      fail-fast: false
-      matrix:
-        include:
-          - { os: macos-latest,   name: macos-arm64    }
-          - { os: ubuntu-latest,  name: linux-x86_64   }
-          - { os: windows-latest, name: windows-x86_64 }
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v5
-        with:
-          submodules: true
-
-      - name: Set VERSION
-        shell: bash
-        env:
-          TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
-        run: echo "VERSION=${TAG_NAME#v}" >> $GITHUB_ENV
-
-      - name: Install deps (Linux)
-        if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libssl-dev libudev-dev cmake
-
-      - name: Configure
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_CLANG_TIDY=OFF
-
-      - name: Build
-        run: cmake --build build --config Release -j
-
-      - name: Stage binary (Unix)
-        if: runner.os != 'Windows'
-        shell: bash
-        run: |
-          mkdir -p dist
-          cp build/openmv_mcp_server "dist/openmv_mcp_server-${VERSION}-${{ matrix.name }}"
-
-      - name: Stage binary (Windows)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          New-Item -ItemType Directory -Force -Path dist | Out-Null
-          Copy-Item "build/Release/openmv_mcp_server.exe" "dist/openmv_mcp_server-$env:VERSION-${{ matrix.name }}.exe"
-
-      - name: Upload to release
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: ${{ needs.release-please.outputs.tag_name }}
-          files: dist/openmv_mcp_server-${{ env.VERSION }}-${{ matrix.name }}*
+    uses: ./.github/workflows/build.yml
+    with:
+      release_tag: ${{ needs.release-please.outputs.tag_name }}
+    permissions:
+      contents: write

@@ -1,3 +1,5 @@
 node_modules/
 out/
 *.vsix
+tools/mcp-server/*/openmv_mcp_server
+tools/mcp-server/*/openmv_mcp_server.exe

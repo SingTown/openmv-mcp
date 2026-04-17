@@ -4,41 +4,12 @@ import * as path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import * as vscode from "vscode";
-import { downloadFile, tempSuffix } from "./utils";
 
 export const MCP_HOST = "127.0.0.1";
 export const MCP_PORT = 15257;
 export const MCP_BASE_URL = `http://${MCP_HOST}:${MCP_PORT}`;
 
 const { version: MCP_VERSION } = require("../package.json");
-const RELEASE_BASE_URL = `https://github.com/SingTown/openmv-mcp/releases/download/v${MCP_VERSION}`;
-
-type PlatformKey = "macos-arm64" | "macos-x64" | "linux-x64" | "win-x64";
-
-function platformKey(): PlatformKey | null {
-    if (process.platform === "darwin" && process.arch === "arm64")
-        return "macos-arm64";
-    if (process.platform === "darwin" && process.arch === "x64")
-        return "macos-x64";
-    if (process.platform === "linux" && process.arch === "x64")
-        return "linux-x64";
-    if (process.platform === "win32" && process.arch === "x64")
-        return "win-x64";
-    return null;
-}
-
-function assetName(version: string, key: PlatformKey): string | null {
-    switch (key) {
-        case "macos-arm64":
-            return `openmv_mcp_server-${version}-macos-arm64`;
-        case "linux-x64":
-            return `openmv_mcp_server-${version}-linux-x86_64`;
-        case "win-x64":
-            return `openmv_mcp_server-${version}-windows-x86_64.exe`;
-        case "macos-x64":
-            return null;
-    }
-}
 
 const SERVER_NAME = "openmv-mcp-server";
 
@@ -91,6 +62,21 @@ async function shutdownRunningServer(): Promise<void> {
     throw new Error("existing openmv-mcp server did not shut down within 2s");
 }
 
+function bundledServerPath(context: vscode.ExtensionContext): string {
+    const exe =
+        process.platform === "win32"
+            ? "openmv_mcp_server.exe"
+            : "openmv_mcp_server";
+    const target = `${process.platform}-${process.arch}`;
+    return path.join(
+        context.extensionUri.fsPath,
+        "tools",
+        "mcp-server",
+        target,
+        exe,
+    );
+}
+
 export async function ensureServer(
     context: vscode.ExtensionContext,
 ): Promise<void> {
@@ -103,49 +89,11 @@ export async function ensureServer(
         await shutdownRunningServer();
     }
 
-    const key = platformKey();
-    if (!key) {
-        throw new Error(
-            `unsupported platform ${process.platform}/${process.arch}`,
-        );
-    }
-
-    const exe =
-        process.platform === "win32"
-            ? "openmv_mcp_server.exe"
-            : "openmv_mcp_server";
-    const cacheRoot = path.join(context.globalStorageUri.fsPath, "mcp-server");
-    const versionDir = path.join(cacheRoot, MCP_VERSION);
-    const bin = path.join(versionDir, exe);
-
+    const bin = bundledServerPath(context);
     if (!fs.existsSync(bin)) {
-        const name = assetName(MCP_VERSION, key);
-        if (!name) {
-            throw new Error(
-                `openmv-mcp does not publish a build for ${key} yet`,
-            );
-        }
-        fs.mkdirSync(versionDir, { recursive: true });
-        const tmpPath = `${bin}.downloading.${tempSuffix()}`;
-        await downloadFile(
-            `${RELEASE_BASE_URL}/${name}`,
-            tmpPath,
-            `Downloading openmv-mcp ${MCP_VERSION}`,
+        throw new Error(
+            `bundled openmv_mcp_server missing for ${process.platform}-${process.arch}: ${bin}`,
         );
-        if (process.platform !== "win32") {
-            fs.chmodSync(tmpPath, 0o755);
-        }
-        try {
-            fs.renameSync(tmpPath, bin);
-        } catch (err) {
-            // Another window may have won the race. On Windows `rename` fails
-            // if the target exists; on POSIX it replaces atomically so this
-            // branch only fires on real errors.
-            try {
-                fs.unlinkSync(tmpPath);
-            } catch {}
-            if (!fs.existsSync(bin)) throw err;
-        }
     }
 
     const result = spawnSync(bin, ["--daemon", "--port", String(MCP_PORT)], {

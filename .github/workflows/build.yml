@@ -1,0 +1,118 @@
+name: build
+
+on:
+  workflow_call:
+    inputs:
+      release_tag:
+        description: "Release tag (e.g. v1.2.3). If set, uploads assets to this release instead of CI artifacts."
+        required: false
+        type: string
+        default: ""
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: macos-latest,      name: macos-arm64,    vsce_target: darwin-arm64 }
+          - { os: ubuntu-latest,     name: linux-x86_64,   vsce_target: linux-x64    }
+          - { os: ubuntu-24.04-arm,  name: linux-arm64,    vsce_target: linux-arm64  }
+          - { os: windows-latest,    name: windows-x86_64, vsce_target: win32-x64    }
+          - { os: windows-11-arm,    name: windows-arm64,  vsce_target: win32-arm64  }
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          submodules: true
+
+      - name: Set VERSION
+        if: inputs.release_tag != ''
+        shell: bash
+        env:
+          TAG_NAME: ${{ inputs.release_tag }}
+        run: echo "VERSION=${TAG_NAME#v}" >> $GITHUB_ENV
+
+      - name: Install tools (macOS)
+        if: runner.os == 'macOS'
+        run: brew install clang-format
+
+      - name: Install deps (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libssl-dev libudev-dev cmake
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
+
+      - name: Check format
+        if: runner.os == 'macOS'
+        run: cmake --build build --target check
+
+      - name: Build server
+        shell: bash
+        run: |
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            cmake --build build --config Release -j$(sysctl -n hw.ncpu)
+          else
+            cmake --build build --config Release -j
+          fi
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure -C Release
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install extension deps
+        working-directory: vscode-extension
+        run: pnpm install
+
+      - name: Lint extension
+        if: runner.os == 'Linux'
+        working-directory: vscode-extension
+        run: pnpm run lint
+
+      - name: Build extension
+        working-directory: vscode-extension
+        run: pnpm run build
+
+      - name: Package VSIX
+        working-directory: vscode-extension
+        run: pnpm run package:${{ matrix.vsce_target }}
+
+      - name: Upload VSIX artifact
+        if: inputs.release_tag == ''
+        uses: actions/upload-artifact@v5
+        with:
+          name: openmv-${{ matrix.vsce_target }}-vsix
+          path: vscode-extension/openmv-*.vsix
+
+      - name: Stage release assets (Unix)
+        if: inputs.release_tag != '' && runner.os != 'Windows'
+        shell: bash
+        run: |
+          mkdir -p dist
+          cp build/openmv_mcp_server "dist/openmv_mcp_server-${VERSION}-${{ matrix.name }}"
+          cp "vscode-extension/openmv-${{ matrix.vsce_target }}-${VERSION}.vsix" dist/
+
+      - name: Stage release assets (Windows)
+        if: inputs.release_tag != '' && runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path dist | Out-Null
+          Copy-Item "build/Release/openmv_mcp_server.exe" "dist/openmv_mcp_server-$env:VERSION-${{ matrix.name }}.exe"
+          Copy-Item "vscode-extension/openmv-${{ matrix.vsce_target }}-$env:VERSION.vsix" "dist/"
+
+      - name: Upload to release
+        if: inputs.release_tag != ''
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.release_tag }}
+          files: |
+            dist/openmv_mcp_server-${{ env.VERSION }}-${{ matrix.name }}*
+            dist/openmv-${{ matrix.vsce_target }}-${{ env.VERSION }}.vsix

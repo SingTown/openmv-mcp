@@ -16,3 +16,7 @@ tools/sdphost/**
 tools/blhost/**
 tools/stcubeprogrammer/mac/**
 tools/stcubeprogrammer/windows/**
+tools/mcp-server/darwin-arm64/**
+tools/mcp-server/linux-x64/**
+tools/mcp-server/win32-x64/**
+tools/mcp-server/win32-arm64/**

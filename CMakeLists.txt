@@ -72,6 +72,33 @@ target_include_directories(openmv_mcp_server PRIVATE ${COMMON_INCLUDES})
 target_compile_definitions(openmv_mcp_server PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)
 target_link_libraries(openmv_mcp_server PRIVATE ${COMMON_LIBS} spdlog::spdlog)
 
+# Stage the built binary into vscode-extension/tools/mcp-server/<target>/ so
+# the VSIX ships it directly (matches process.platform-process.arch at runtime).
+if(APPLE)
+    set(VSCE_TARGET "darwin-arm64")
+elseif(UNIX)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64|arm64")
+        set(VSCE_TARGET "linux-arm64")
+    else()
+        set(VSCE_TARGET "linux-x64")
+    endif()
+elseif(WIN32)
+    if(CMAKE_SYSTEM_PROCESSOR MATCHES "ARM64|arm64|aarch64")
+        set(VSCE_TARGET "win32-arm64")
+    else()
+        set(VSCE_TARGET "win32-x64")
+    endif()
+endif()
+
+add_custom_command(TARGET openmv_mcp_server POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E make_directory
+        ${CMAKE_SOURCE_DIR}/vscode-extension/tools/mcp-server/${VSCE_TARGET}
+    COMMAND ${CMAKE_COMMAND} -E copy
+        $<TARGET_FILE:openmv_mcp_server>
+        ${CMAKE_SOURCE_DIR}/vscode-extension/tools/mcp-server/${VSCE_TARGET}/
+    COMMENT "Staging openmv_mcp_server -> vscode-extension/tools/mcp-server/${VSCE_TARGET}/"
+)
+
 # Test executable
 include(FetchContent)
 FetchContent_Declare(
