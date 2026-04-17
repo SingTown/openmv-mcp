@@ -203,6 +203,20 @@ static const McpTool TOOL_CAMERA_RESET = {
     },
 };
 
+static const McpTool TOOL_CAMERA_BOOT = {
+    "camera_boot",
+    "Reboot the camera into bootloader mode (for firmware flashing)",
+    CAMERA_PATH_SCHEMA,
+    [](McpContext& ctx, const json& args, const std::atomic<bool>& /*cancelled*/) {
+        auto cameraPath = args.at("cameraPath").get<std::string>();
+        auto camera = ctx.takeCamera(cameraPath);
+        camera->boot();
+        McpContent resp;
+        resp.addText(json({{"success", true}}));
+        return resp;
+    },
+};
+
 static const McpTool TOOL_FRAME_CAPTURE = {
     "frame_capture",
     "Capture a single frame from the camera's frame buffer. A script that captures frames must be "
@@ -320,6 +334,7 @@ const std::vector<const McpTool*> ALL_MCP_TOOLS = {
     &TOOL_CAMERA_CONNECT,
     &TOOL_CAMERA_DISCONNECT,
     &TOOL_CAMERA_RESET,
+    &TOOL_CAMERA_BOOT,
     &TOOL_CAMERA_INFO,
     &TOOL_SCRIPT_RUN,
     &TOOL_SCRIPT_STOP,

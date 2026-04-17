@@ -83,7 +83,7 @@ TEST_F(McpServerTest, UnknownMethod) {
 
 TEST_F(McpServerTest, ToolsList) {
     auto tools = client_->listTools();
-    EXPECT_EQ(tools.size(), 15U);
+    EXPECT_EQ(tools.size(), 16U);
 
     std::set<std::string> names;
     for (const auto& t : tools) names.insert(t.name);
@@ -92,6 +92,7 @@ TEST_F(McpServerTest, ToolsList) {
     EXPECT_TRUE(names.count("camera_disconnect"));
     EXPECT_TRUE(names.count("camera_info"));
     EXPECT_TRUE(names.count("camera_reset"));
+    EXPECT_TRUE(names.count("camera_boot"));
     EXPECT_TRUE(names.count("script_run"));
     EXPECT_TRUE(names.count("script_stop"));
     EXPECT_TRUE(names.count("script_output"));
@@ -151,6 +152,11 @@ TEST_F(McpServerTest, FrameEnableNotConnected) {
 
 TEST_F(McpServerTest, CameraResetNotConnected) {
     auto result = client_->callTool("camera_reset", {{"cameraPath", "/dev/cu.nonexistent"}}).wait();
+    EXPECT_TRUE(result.is_error);
+}
+
+TEST_F(McpServerTest, CameraBootNotConnected) {
+    auto result = client_->callTool("camera_boot", {{"cameraPath", "/dev/cu.nonexistent"}}).wait();
     EXPECT_TRUE(result.is_error);
 }
 

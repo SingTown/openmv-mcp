@@ -43,6 +43,7 @@ npx @modelcontextprotocol/inspector --config mcp-inspector.json
 | `camera_connect` | Connect to a camera by serial port path |
 | `camera_disconnect` | Disconnect from a camera |
 | `camera_reset` | Reset (reboot) the camera |
+| `camera_boot` | Reboot the camera into bootloader mode (for firmware flashing) |
 | `camera_info` | Get camera board/sensor/firmware info |
 | `script_run` | Execute MicroPython script on camera |
 | `script_stop` | Stop currently running script |
