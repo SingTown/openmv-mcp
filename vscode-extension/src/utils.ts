@@ -110,3 +110,7 @@ export async function downloadToBuffer(
 export function tempSuffix(): string {
     return `${process.pid}.${crypto.randomBytes(4).toString("hex")}`;
 }
+
+export function toMessage(err: unknown): string {
+    return err instanceof Error ? err.message : String(err);
+}

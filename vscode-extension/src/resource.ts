@@ -10,6 +10,15 @@ const VERSION_URL =
 const RELEASE_BASE_URL =
     "https://github.com/openmv/openmv-ide/releases/download";
 
+let resourcesPath: string | null = null;
+
+export function getResourcesPath(): string {
+    if (!resourcesPath) {
+        throw new Error("resources not initialized");
+    }
+    return resourcesPath;
+}
+
 export async function ensureResources(
     context: vscode.ExtensionContext,
 ): Promise<void> {
@@ -61,6 +70,7 @@ export async function ensureResources(
     }
 
     pruneOldVersions(resourcesDir, effective);
+    resourcesPath = versionDir;
 }
 
 async function fetchLatestVersion(): Promise<string> {

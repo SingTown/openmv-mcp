@@ -19,6 +19,9 @@ Please disable the ms-python plugin before using the extension.
 - [x] ▶️ Run/Stop Script
 - [x] 📸️ Realtime frame view
 - [x] 🖥️ Show terminal message
+- [x] 📂 Open Camera Drive
+- [x] 💾 Save Frame
+- [x] ☁️ Upgrade firmware
 - [ ] 🖥️ Install driver
 - [ ] 🖥️ mpy-cross compile
 - [ ] 💡 Code intelligence
@@ -29,7 +32,6 @@ Please disable the ms-python plugin before using the extension.
 - [ ] 💾 Save current script to OpenMV Cam
 - [ ] 📋 API Document
 - [ ] 📋 API Document i18n
-- [ ] ☁️ Upgrade firmware
 - [ ] 📖 Register license
 - [ ] 📺 Tutorial
 - [ ] 📊 Threshold tool

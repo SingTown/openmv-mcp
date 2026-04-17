@@ -1,4 +1,5 @@
 import type * as vscode from "vscode";
+import { initFirmware } from "./firmware";
 import { initFrameView } from "./frame";
 import { openmv } from "./openmv";
 import { ensureResources } from "./resource";
@@ -13,6 +14,7 @@ export async function activate(context: vscode.ExtensionContext) {
     initStatusBar(context);
     initTerminal(context);
     initFrameView(context);
+    initFirmware(context);
 }
 
 export function deactivate() {}

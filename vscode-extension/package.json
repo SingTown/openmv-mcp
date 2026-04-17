@@ -57,6 +57,21 @@
         "title": "Save Frame",
         "category": "OpenMV",
         "icon": "$(save)"
+      },
+      {
+        "command": "openmv.update",
+        "title": "Update Firmware",
+        "category": "OpenMV"
+      },
+      {
+        "command": "openmv.firmware",
+        "title": "Flash Custom Firmware...",
+        "category": "OpenMV"
+      },
+      {
+        "command": "openmv.repair",
+        "title": "Repair Firmware...",
+        "category": "OpenMV"
       }
     ],
     "viewsContainers": {
@@ -99,11 +114,19 @@
     "lint": "biome check src/",
     "format": "biome format --write src/",
     "check": "biome check --write src/ && pnpm run typecheck",
-    "package": "vsce package"
+    "package": "vsce package",
+    "package:darwin-x64": "vsce package --no-dependencies --target darwin-x64 --ignoreFile .vscodeignore.darwin",
+    "package:darwin-arm64": "vsce package --no-dependencies --target darwin-arm64 --ignoreFile .vscodeignore.darwin",
+    "package:win32-x64": "vsce package --no-dependencies --target win32-x64 --ignoreFile .vscodeignore.win32",
+    "package:win32-arm64": "vsce package --no-dependencies --target win32-arm64 --ignoreFile .vscodeignore.win32",
+    "package:linux-x64": "vsce package --no-dependencies --target linux-x64 --ignoreFile .vscodeignore.linux-x64",
+    "package:linux-arm64": "vsce package --no-dependencies --target linux-arm64 --ignoreFile .vscodeignore.linux-arm64",
+    "package:all": "pnpm run package:darwin-x64 && pnpm run package:darwin-arm64 && pnpm run package:win32-x64 && pnpm run package:win32-arm64 && pnpm run package:linux-x64 && pnpm run package:linux-arm64"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.29.0",
     "adm-zip": "^0.5.17",
+    "execa": "^9.6.1",
     "semver": "^7.7.4"
   },
   "devDependencies": {

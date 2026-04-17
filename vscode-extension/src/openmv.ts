@@ -125,6 +125,14 @@ class OpenMV extends EventEmitter {
         this.#setConnected(false);
     }
 
+    async boot() {
+        const p = this.#connectedPath;
+        if (!p) throw new Error("camera not connected");
+        await this.#callTool("camera_boot", { cameraPath: p });
+        this.#closeStatusStream();
+        this.#setConnected(false);
+    }
+
     async runScript(script: string) {
         const p = this.#connectedPath;
         if (!p) throw new Error("camera not connected");
