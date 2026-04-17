@@ -1,11 +1,10 @@
 import { spawnSync } from "node:child_process";
-import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import * as vscode from "vscode";
-import { downloadFile } from "./utils";
+import { downloadFile, tempSuffix } from "./utils";
 
 export const MCP_HOST = "127.0.0.1";
 export const MCP_PORT = 15257;
@@ -127,9 +126,7 @@ export async function ensureServer(
             );
         }
         fs.mkdirSync(versionDir, { recursive: true });
-        const tmpPath = `${bin}.downloading.${process.pid}.${crypto
-            .randomBytes(4)
-            .toString("hex")}`;
+        const tmpPath = `${bin}.downloading.${tempSuffix()}`;
         await downloadFile(
             `${RELEASE_BASE_URL}/${name}`,
             tmpPath,

@@ -102,11 +102,15 @@
     "package": "vsce package"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0"
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "adm-zip": "^0.5.17",
+    "semver": "^7.7.4"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.4.12",
+    "@types/adm-zip": "^0.5.8",
     "@types/node": "^20.0.0",
+    "@types/semver": "^7.7.1",
     "@types/vscode": "^1.85.0",
     "@vscode/vsce": "^3.9.0",
     "esbuild": "^0.24.2",
