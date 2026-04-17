@@ -35,11 +35,21 @@ jobs:
 
       - name: Install tools (macOS)
         if: runner.os == 'macOS'
-        run: brew install clang-format
+        run: |
+          brew install clang-format llvm
+          echo "$(brew --prefix llvm)/bin" >> $GITHUB_PATH
 
       - name: Install deps (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libssl-dev libudev-dev cmake
+        run: sudo apt-get update && sudo apt-get install -y libssl-dev libudev-dev cmake clang-tidy clang-format
+
+      - name: Install tools (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          winget install --id LLVM.LLVM --exact --silent --accept-source-agreements --accept-package-agreements --disable-interactivity
+          [Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\Program Files\LLVM\bin", "Machine")
+          echo "C:\Program Files\LLVM\bin" >> $env:GITHUB_PATH
 
       - name: Configure
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -61,9 +71,9 @@ jobs:
         run: ctest --test-dir build --output-on-failure -C Release
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install pnpm
         run: npm install -g pnpm

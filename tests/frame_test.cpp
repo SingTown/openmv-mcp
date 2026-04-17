@@ -17,7 +17,7 @@ TEST(FrameTest, PngThrows) {
     std::vector<uint8_t> png_data = {0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A};
     Frame frame(320, 240, PixFormat::PNG, png_data);
 
-    EXPECT_THROW(frame.toJpeg(), std::runtime_error);
+    EXPECT_THROW((void)frame.toJpeg(), std::runtime_error);
 }
 
 TEST(FrameTest, GrayscaleToJpeg) {

@@ -41,7 +41,14 @@ elseif(WIN32)
 endif()
 
 # Common include dirs
-set(COMMON_INCLUDES src src/camera_list src/utils 3rdparty 3rdparty/nlohmann-json/single_include)
+set(COMMON_INCLUDES src src/camera_list src/utils)
+set(THIRDPARTY_INCLUDES 3rdparty 3rdparty/nlohmann-json/single_include)
+
+if(MSVC)
+    set(WARNING_FLAGS /W4 /WX)
+else()
+    set(WARNING_FLAGS -Wall -Wextra -Wpedantic -Werror)
+endif()
 
 find_package(Threads REQUIRED)
 set(OPENSSL_USE_STATIC_LIBS ON)
@@ -69,7 +76,9 @@ add_subdirectory(3rdparty/spdlog)
 # MCP Server executable
 add_executable(openmv_mcp_server ${CORE_SOURCES} src/main.cpp)
 target_include_directories(openmv_mcp_server PRIVATE ${COMMON_INCLUDES})
+target_include_directories(openmv_mcp_server SYSTEM PRIVATE ${THIRDPARTY_INCLUDES})
 target_compile_definitions(openmv_mcp_server PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)
+target_compile_options(openmv_mcp_server PRIVATE ${WARNING_FLAGS})
 target_link_libraries(openmv_mcp_server PRIVATE ${COMMON_LIBS} spdlog::spdlog)
 
 # Stage the built binary into vscode-extension/tools/mcp-server/<target>/ so
@@ -124,7 +133,9 @@ set(TEST_SOURCES
 
 add_executable(openmv_mcp_server_test ${CORE_SOURCES} ${TEST_SOURCES})
 target_include_directories(openmv_mcp_server_test PRIVATE ${COMMON_INCLUDES})
+target_include_directories(openmv_mcp_server_test SYSTEM PRIVATE ${THIRDPARTY_INCLUDES})
 target_compile_definitions(openmv_mcp_server_test PRIVATE CPPHTTPLIB_OPENSSL_SUPPORT)
+target_compile_options(openmv_mcp_server_test PRIVATE ${WARNING_FLAGS})
 target_link_libraries(openmv_mcp_server_test PRIVATE ${COMMON_LIBS} GTest::gtest_main spdlog::spdlog)
 gtest_discover_tests(openmv_mcp_server_test WORKING_DIRECTORY ${CMAKE_SOURCE_DIR} PROPERTIES TIMEOUT 300 ENVIRONMENT "GTEST_FAIL_FAST=1")
 
@@ -149,6 +160,6 @@ if(ENABLE_CLANG_TIDY)
     if(CLANG_TIDY)
         set(CMAKE_CXX_CLANG_TIDY ${CLANG_TIDY})
     else()
-        message(WARNING "clang-tidy not found")
+        message(FATAL_ERROR "clang-tidy not found (disable with -DENABLE_CLANG_TIDY=OFF)")
     endif()
 endif()
