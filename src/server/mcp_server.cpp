@@ -294,7 +294,7 @@ void McpServer::setupRoutes() {
 
 bool McpServer::bind() {
     setupRoutes();
-    server_.set_socket_options([](socket_t sock) {
+    server_.set_socket_options([]([[maybe_unused]] socket_t sock) {
 #ifndef _WIN32
         int yes = 1;
         ::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&yes), sizeof(yes));

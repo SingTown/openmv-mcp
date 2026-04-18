@@ -22,7 +22,7 @@ jobs:
           - { os: windows-11-arm,    name: windows-arm64,  vsce_target: win32-arm64  }
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v6
         with:
           submodules: true
 
@@ -35,11 +35,21 @@ jobs:
 
       - name: Install tools (macOS)
         if: runner.os == 'macOS'
-        run: brew install clang-format
+        run: |
+          brew install clang-format llvm
+          echo "$(brew --prefix llvm)/bin" >> $GITHUB_PATH
 
       - name: Install deps (Linux)
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libssl-dev libudev-dev cmake
+        run: sudo apt-get update && sudo apt-get install -y libssl-dev libudev-dev cmake clang-tidy clang-format
+
+      - name: Install tools (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          winget install --id LLVM.LLVM --exact --silent --accept-source-agreements --accept-package-agreements --disable-interactivity
+          [Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\Program Files\LLVM\bin", "Machine")
+          echo "C:\Program Files\LLVM\bin" >> $env:GITHUB_PATH
 
       - name: Configure
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -61,9 +71,9 @@ jobs:
         run: ctest --test-dir build --output-on-failure -C Release
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install pnpm
         run: npm install -g pnpm
@@ -87,7 +97,7 @@ jobs:
 
       - name: Upload VSIX artifact
         if: inputs.release_tag == ''
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v7
         with:
           name: openmv-${{ matrix.vsce_target }}-vsix
           path: vscode-extension/openmv-*.vsix
@@ -110,7 +120,7 @@ jobs:
 
       - name: Upload to release
         if: inputs.release_tag != ''
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ inputs.release_tag }}
           files: |

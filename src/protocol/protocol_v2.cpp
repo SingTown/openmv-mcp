@@ -26,8 +26,6 @@ constexpr uint8_t EVENT = 1 << 5;
 
 namespace Proto {
 constexpr uint16_t SYNC_WORD = 0xD5AA;
-constexpr uint16_t HEADER_SIZE = 10;
-constexpr uint16_t CRC_SIZE = 4;
 constexpr uint16_t MIN_PAYLOAD_SIZE = 52;
 }  // namespace Proto
 
