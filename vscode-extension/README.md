@@ -26,8 +26,8 @@ Please disable the ms-python plugin before using the extension.
 - [ ] 🖥️ mpy-cross compile
 - [ ] 💡 Code intelligence
 - [ ] 💡 Code intelligence i18n
-- [ ] 🌰 Code example
-- [ ] 🌰 Code example search
+- [x] 🌰 Code example
+- [x] 🌰 Code example search
 - [ ] 🌰 Code example i18n
 - [ ] 💾 Save current script to OpenMV Cam
 - [ ] 📋 API Document

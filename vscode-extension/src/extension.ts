@@ -1,4 +1,5 @@
 import type * as vscode from "vscode";
+import { initExamples } from "./examples";
 import { initFirmware } from "./firmware";
 import { initFrameView } from "./frame";
 import { openmv } from "./openmv";
@@ -15,6 +16,7 @@ export async function activate(context: vscode.ExtensionContext) {
     initTerminal(context);
     initFrameView(context);
     initFirmware(context);
+    initExamples(context);
 }
 
 export function deactivate() {}

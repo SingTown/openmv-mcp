@@ -72,23 +72,38 @@
         "command": "openmv.repair",
         "title": "Repair Firmware...",
         "category": "OpenMV"
+      },
+      {
+        "command": "openmv.openExample",
+        "title": "Open Example",
+        "category": "OpenMV"
+      },
+      {
+        "command": "openmv.searchExample",
+        "title": "Search Example",
+        "category": "OpenMV",
+        "icon": "$(search)"
       }
     ],
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "openmv-frameActivitybar",
+          "id": "openmv-activitybar",
           "title": "OpenMV",
-          "icon": "media/camera.svg"
+          "icon": "media/openmv.svg"
         }
       ]
     },
     "views": {
-      "openmv-frameActivitybar": [
+      "openmv-activitybar": [
         {
           "id": "openmv-frameView",
           "name": "Frame",
           "type": "webview"
+        },
+        {
+          "id": "openmv-exampleView",
+          "name": "Examples"
         }
       ]
     },
@@ -103,6 +118,17 @@
           "command": "openmv.saveFrame",
           "when": "view == openmv-frameView",
           "group": "navigation@2"
+        },
+        {
+          "command": "openmv.searchExample",
+          "when": "view == openmv-exampleView",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "openmv.openExample",
+          "when": "false"
         }
       ]
     }
