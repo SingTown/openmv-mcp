@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.0](https://github.com/SingTown/openmv-mcp/compare/v2.2.0...v2.3.0) (2026-04-18)
+
+
+### Features
+
+* **vscode:** add i18n support for 14 languages ([ffbd3c1](https://github.com/SingTown/openmv-mcp/commit/ffbd3c1d17072f32592b0b68e48656b2d4dcebb8))
+
 ## [2.2.0](https://github.com/SingTown/openmv-mcp/compare/v2.1.0...v2.2.0) (2026-04-18)
 
 
