@@ -16,6 +16,7 @@
   "categories": [
     "Other"
   ],
+  "icon": "media/openmv.png",
   "activationEvents": [
     "onStartupFinished"
   ],
