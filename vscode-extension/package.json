@@ -2,7 +2,7 @@
   "name": "openmv",
   "displayName": "OpenMV",
   "description": "OpenMV VS Code Extension",
-  "version": "2.1.0",
+  "version": "2.2.0",
   "publisher": "openmv",
   "repository": {
     "type": "git",
