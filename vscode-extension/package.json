@@ -1,9 +1,9 @@
 {
   "name": "openmv",
   "displayName": "OpenMV",
-  "description": "OpenMV VS Code Extension",
+  "description": "Program your OpenMV Cam in VSCode",
   "version": "2.2.0",
-  "publisher": "openmv",
+  "publisher": "singtown",
   "repository": {
     "type": "git",
     "url": "https://github.com/SingTown/openmv-mcp.git",

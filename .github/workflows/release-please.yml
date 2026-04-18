@@ -29,3 +29,4 @@ jobs:
       release_tag: ${{ needs.release-please.outputs.tag_name }}
     permissions:
       contents: write
+    secrets: inherit
