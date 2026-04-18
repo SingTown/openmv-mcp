@@ -108,7 +108,6 @@ jobs:
         run: |
           mkdir -p dist
           cp build/openmv_mcp_server "dist/openmv_mcp_server-${VERSION}-${{ matrix.name }}"
-          cp "vscode-extension/openmv-${{ matrix.vsce_target }}-${VERSION}.vsix" dist/
 
       - name: Stage release assets (Windows)
         if: inputs.release_tag != '' && runner.os == 'Windows'
@@ -116,7 +115,6 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path dist | Out-Null
           Copy-Item "build/Release/openmv_mcp_server.exe" "dist/openmv_mcp_server-$env:VERSION-${{ matrix.name }}.exe"
-          Copy-Item "vscode-extension/openmv-${{ matrix.vsce_target }}-$env:VERSION.vsix" "dist/"
 
       - name: Upload to release
         if: inputs.release_tag != ''
@@ -125,4 +123,11 @@ jobs:
           tag_name: ${{ inputs.release_tag }}
           files: |
             dist/openmv_mcp_server-${{ env.VERSION }}-${{ matrix.name }}*
-            dist/openmv-${{ matrix.vsce_target }}-${{ env.VERSION }}.vsix
+
+      - name: Publish to VS Code Marketplace
+        if: inputs.release_tag != ''
+        working-directory: vscode-extension
+        shell: bash
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        run: pnpm exec vsce publish --no-dependencies --packagePath "openmv-${{ matrix.vsce_target }}-${VERSION}.vsix"
