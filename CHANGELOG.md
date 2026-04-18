@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.3.1](https://github.com/SingTown/openmv-mcp/compare/v2.3.0...v2.3.1) (2026-04-18)
+
+
+### Bug Fixes
+
+* **vscode:** add extension icon for marketplace ([f281374](https://github.com/SingTown/openmv-mcp/commit/f2813740e0adf5425d17343897a7775afb9e9222))
+
 ## [2.3.0](https://github.com/SingTown/openmv-mcp/compare/v2.2.0...v2.3.0) (2026-04-18)
 
 
