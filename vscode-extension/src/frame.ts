@@ -18,14 +18,15 @@ async function selectFrameSaveFolder() {
 
 async function saveFrame() {
     if (!selectedFolder) {
-        vscode.window.showErrorMessage("Please select a folder first", {
-            modal: true,
-        });
+        vscode.window.showErrorMessage(
+            vscode.l10n.t("Please select a folder first"),
+            { modal: true },
+        );
         return;
     }
     const base64 = await openmv.captureFrame();
     if (!base64) {
-        vscode.window.showErrorMessage("No frame available", {
+        vscode.window.showErrorMessage(vscode.l10n.t("No frame available"), {
             modal: true,
         });
         return;

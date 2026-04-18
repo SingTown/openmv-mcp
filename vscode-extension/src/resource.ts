@@ -2,7 +2,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import AdmZip from "adm-zip";
 import * as semver from "semver";
-import type * as vscode from "vscode";
+import * as vscode from "vscode";
 import { downloadToBuffer, tempSuffix } from "./utils";
 
 const VERSION_URL =
@@ -51,7 +51,7 @@ export async function ensureResources(
             const url = `${RELEASE_BASE_URL}/v${effective}/openmv-ide-resources-${effective}.zip`;
             const buf = await downloadToBuffer(
                 url,
-                `Downloading OpenMV resources ${effective}`,
+                vscode.l10n.t("Downloading OpenMV resources {0}", effective),
             );
             new AdmZip(buf).extractAllTo(downloadingDir, true);
             try {
