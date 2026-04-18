@@ -84,7 +84,11 @@ export async function ensureServer(
     if (isCurrent(existing)) return;
     if (existing.ok && existing.name === SERVER_NAME) {
         vscode.window.showInformationMessage(
-            `Restarting openmv-mcp server: ${existing.version} → ${MCP_VERSION}`,
+            vscode.l10n.t(
+                "Restarting openmv-mcp server: {0} → {1}",
+                existing.version ?? "",
+                MCP_VERSION,
+            ),
         );
         await shutdownRunningServer();
     }

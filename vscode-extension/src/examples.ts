@@ -117,7 +117,7 @@ async function searchExample(root: string) {
     quickPick.canSelectMany = false;
     quickPick.matchOnDescription = true;
     quickPick.matchOnDetail = true;
-    quickPick.placeholder = "Search examples...";
+    quickPick.placeholder = vscode.l10n.t("Search examples...");
     quickPick.items = contents.map((item) => ({
         label: path.basename(item.file),
         description: path.relative(root, item.file),

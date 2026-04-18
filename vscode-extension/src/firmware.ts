@@ -12,14 +12,18 @@ function getOutputChannel(): vscode.OutputChannel {
     return outputChannel;
 }
 
-const DFU_FACTORY_MSG =
-    "Disconnect your OpenMV Cam from your computer, add a jumper wire between the BOOT and RST pins, and then reconnect your OpenMV Cam to your computer.";
-const DFU_BOOTLOADER_MSG =
-    "Disconnect your OpenMV Cam from your computer, remove the jumper wire between the BOOT and RST pins, and then reconnect your OpenMV Cam to your computer.";
-const SBL_FACTORY_MSG =
-    "Disconnect your OpenMV Cam from your computer, add a jumper wire between the SBL and 3.3V pins, and then reconnect your OpenMV Cam to your computer.";
-const SBL_BOOTLOADER_MSG =
-    "Disconnect your OpenMV Cam from your computer, remove the jumper wire between the SBL and 3.3V pins, and then reconnect your OpenMV Cam to your computer.";
+const DFU_FACTORY_MSG = vscode.l10n.t(
+    "Disconnect your OpenMV Cam from your computer, add a jumper wire between the BOOT and RST pins, and then reconnect your OpenMV Cam to your computer.",
+);
+const DFU_BOOTLOADER_MSG = vscode.l10n.t(
+    "Disconnect your OpenMV Cam from your computer, remove the jumper wire between the BOOT and RST pins, and then reconnect your OpenMV Cam to your computer.",
+);
+const SBL_FACTORY_MSG = vscode.l10n.t(
+    "Disconnect your OpenMV Cam from your computer, add a jumper wire between the SBL and 3.3V pins, and then reconnect your OpenMV Cam to your computer.",
+);
+const SBL_BOOTLOADER_MSG = vscode.l10n.t(
+    "Disconnect your OpenMV Cam from your computer, remove the jumper wire between the SBL and 3.3V pins, and then reconnect your OpenMV Cam to your computer.",
+);
 
 interface DetectCommand {
     exe: string;
@@ -68,8 +72,14 @@ export class Board {
             this.bootloaderDetectMessage,
         );
         const dir = customFirmwareDir || this.firmwareDir;
-        await this.#execAll(this.firmwareCommands, dir, "Flashing firmware");
-        vscode.window.showInformationMessage("Flash successfully");
+        await this.#execAll(
+            this.firmwareCommands,
+            dir,
+            vscode.l10n.t("Flashing firmware"),
+        );
+        vscode.window.showInformationMessage(
+            vscode.l10n.t("Flash successfully"),
+        );
     }
 
     async repairFirmware(): Promise<void> {
@@ -78,7 +88,7 @@ export class Board {
         await this.#execAll(
             this.bootloaderCommands,
             this.firmwareDir,
-            "Flashing bootloader",
+            vscode.l10n.t("Flashing bootloader"),
         );
 
         await this.#waitFor(
@@ -88,9 +98,11 @@ export class Board {
         await this.#execAll(
             this.firmwareCommands,
             this.firmwareDir,
-            "Flashing firmware",
+            vscode.l10n.t("Flashing firmware"),
         );
-        vscode.window.showInformationMessage("Flash successfully");
+        vscode.window.showInformationMessage(
+            vscode.l10n.t("Flash successfully"),
+        );
     }
 
     assertSupported(): void {
@@ -102,7 +114,12 @@ export class Board {
         ];
         if (exes.some((e) => e === "")) {
             throw new Error(
-                `${this.name} is not supported on ${process.platform}/${process.arch}`,
+                vscode.l10n.t(
+                    "{0} is not supported on {1}/{2}",
+                    this.name,
+                    process.platform,
+                    process.arch,
+                ),
             );
         }
     }
@@ -757,7 +774,7 @@ export function findBoardByName(name: string): Board {
 async function selectBoard(): Promise<Board | null> {
     const items = allBoards().map((board) => ({ label: board.name, board }));
     const selected = await vscode.window.showQuickPick(items, {
-        placeHolder: "Select a board",
+        placeHolder: vscode.l10n.t("Select a board"),
     });
     return selected?.board ?? null;
 }
@@ -765,7 +782,7 @@ async function selectBoard(): Promise<Board | null> {
 async function selectFirmwareFolder(): Promise<string | null> {
     const fileUri = await vscode.window.showOpenDialog({
         canSelectMany: false,
-        openLabel: "Select firmware folder",
+        openLabel: vscode.l10n.t("Select firmware folder"),
         canSelectFiles: false,
         canSelectFolders: true,
     });
@@ -780,7 +797,9 @@ export function initFirmware(context: vscode.ExtensionContext) {
     async function updateCommand(customDir: string | undefined) {
         const info = openmv.getInfo();
         if (!info) {
-            vscode.window.showErrorMessage("Please connect a camera first");
+            vscode.window.showErrorMessage(
+                vscode.l10n.t("Please connect a camera first"),
+            );
             return;
         }
         const board = findBoardByName(info.name);

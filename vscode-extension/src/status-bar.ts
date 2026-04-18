@@ -16,14 +16,15 @@ function checkUpdate(current: string, latest: string) {
     if (!current || !latest) return;
     if (!semver.valid(current) || !semver.valid(latest)) return;
     if (!semver.lt(current, latest)) return;
+    const updateLabel = vscode.l10n.t("Update");
     vscode.window
         .showInformationMessage(
-            `New firmware available (${latest})`,
-            "Update",
-            "Cancel",
+            vscode.l10n.t("New firmware available ({0})", latest),
+            updateLabel,
+            vscode.l10n.t("Cancel"),
         )
         .then((value) => {
-            if (value === "Update") {
+            if (value === updateLabel) {
                 vscode.commands.executeCommand("openmv.update");
             }
         });
@@ -40,7 +41,9 @@ function getCurrentEditorText(languageId = "python"): string | null {
         );
     }
     if (!editor) {
-        vscode.window.showInformationMessage("Please open a Python file");
+        vscode.window.showInformationMessage(
+            vscode.l10n.t("Please open a Python file"),
+        );
         return null;
     }
     return editor.document.getText();
@@ -51,28 +54,28 @@ export function initStatusBar(context: vscode.ExtensionContext) {
         vscode.StatusBarAlignment.Left,
         20,
     );
-    connectStatusBarItem.text = "$(link) Connect";
+    connectStatusBarItem.text = vscode.l10n.t("$(link) Connect");
     connectStatusBarItem.command = "openmv.connect";
 
     const disconnectStatusBarItem = vscode.window.createStatusBarItem(
         vscode.StatusBarAlignment.Left,
         20,
     );
-    disconnectStatusBarItem.text = "$(sync-ignored) Disconnect";
+    disconnectStatusBarItem.text = vscode.l10n.t("$(sync-ignored) Disconnect");
     disconnectStatusBarItem.command = "openmv.disconnect";
 
     const runStatusBarItem = vscode.window.createStatusBarItem(
         vscode.StatusBarAlignment.Left,
         10,
     );
-    runStatusBarItem.text = "$(debug-start) Run";
+    runStatusBarItem.text = vscode.l10n.t("$(debug-start) Run");
     runStatusBarItem.command = "openmv.runScript";
 
     const stopStatusBarItem = vscode.window.createStatusBarItem(
         vscode.StatusBarAlignment.Left,
         10,
     );
-    stopStatusBarItem.text = "$(debug-stop) Stop";
+    stopStatusBarItem.text = vscode.l10n.t("$(debug-stop) Stop");
     stopStatusBarItem.command = "openmv.stopScript";
 
     const driveStatusBarItem = vscode.window.createStatusBarItem(
@@ -103,7 +106,9 @@ export function initStatusBar(context: vscode.ExtensionContext) {
     async function connectCommand() {
         const ports = await openmv.scan();
         if (ports.length === 0) {
-            vscode.window.showErrorMessage("No serial port found");
+            vscode.window.showErrorMessage(
+                vscode.l10n.t("No serial port found"),
+            );
             return;
         }
         if (ports.length === 1) {
@@ -112,7 +117,7 @@ export function initStatusBar(context: vscode.ExtensionContext) {
         }
         const items = ports.map((port) => new PortQuickPickItem(port));
         const selected = await vscode.window.showQuickPick(items, {
-            placeHolder: "Select a serial port",
+            placeHolder: vscode.l10n.t("Select a serial port"),
         });
         if (selected) {
             await openmv.connect(selected.port.path);
@@ -125,7 +130,9 @@ export function initStatusBar(context: vscode.ExtensionContext) {
 
     async function runCommand() {
         if (!openmv.isConnected()) {
-            vscode.window.showErrorMessage("Please connect a camera first");
+            vscode.window.showErrorMessage(
+                vscode.l10n.t("Please connect a camera first"),
+            );
             return;
         }
         const code = getCurrentEditorText();
@@ -138,7 +145,9 @@ export function initStatusBar(context: vscode.ExtensionContext) {
 
     async function stopCommand() {
         if (!openmv.isConnected()) {
-            vscode.window.showErrorMessage("Please connect a camera first");
+            vscode.window.showErrorMessage(
+                vscode.l10n.t("Please connect a camera first"),
+            );
             return;
         }
         await openmv.stopScript();
@@ -191,8 +200,14 @@ export function initStatusBar(context: vscode.ExtensionContext) {
     openmv.on("connected", (isConnected: boolean) => {
         const info = openmv.getInfo();
         if (isConnected && info) {
-            firmwareStatusBarItem.text = `$(info) Firmware ${info.fwVersion}`;
-            firmwareStatusBarItem.tooltip = `Latest: ${info.latestFwVersion || "unknown"}`;
+            firmwareStatusBarItem.text = vscode.l10n.t(
+                "$(info) Firmware {0}",
+                info.fwVersion,
+            );
+            firmwareStatusBarItem.tooltip = vscode.l10n.t(
+                "Latest: {0}",
+                info.latestFwVersion || vscode.l10n.t("unknown"),
+            );
             firmwareStatusBarItem.show();
             checkUpdate(info.fwVersion, info.latestFwVersion);
         } else {
@@ -201,6 +216,8 @@ export function initStatusBar(context: vscode.ExtensionContext) {
     });
 
     openmv.on("error", (err: unknown) => {
-        vscode.window.showErrorMessage(`OpenMV: ${toMessage(err)}`);
+        vscode.window.showErrorMessage(
+            vscode.l10n.t("OpenMV: {0}", toMessage(err)),
+        );
     });
 }

@@ -1,9 +1,10 @@
 {
   "name": "openmv",
   "displayName": "OpenMV",
-  "description": "Program your OpenMV Cam in VSCode",
+  "description": "%openmv.description%",
   "version": "2.2.0",
   "publisher": "singtown",
+  "l10n": "./l10n",
   "repository": {
     "type": "git",
     "url": "https://github.com/SingTown/openmv-mcp.git",
@@ -23,64 +24,64 @@
     "commands": [
       {
         "command": "openmv.connect",
-        "title": "Connect",
+        "title": "%openmv.command.connect.title%",
         "category": "OpenMV"
       },
       {
         "command": "openmv.disconnect",
-        "title": "Disconnect",
+        "title": "%openmv.command.disconnect.title%",
         "category": "OpenMV"
       },
       {
         "command": "openmv.runScript",
-        "title": "Run Script",
+        "title": "%openmv.command.runScript.title%",
         "category": "OpenMV"
       },
       {
         "command": "openmv.stopScript",
-        "title": "Stop Script",
+        "title": "%openmv.command.stopScript.title%",
         "category": "OpenMV"
       },
       {
         "command": "openmv.drive",
-        "title": "Open Camera Drive",
+        "title": "%openmv.command.drive.title%",
         "category": "OpenMV"
       },
       {
         "command": "openmv.selectFrameSaveFolder",
-        "title": "Select Frame Save Folder",
+        "title": "%openmv.command.selectFrameSaveFolder.title%",
         "category": "OpenMV",
         "icon": "$(folder)"
       },
       {
         "command": "openmv.saveFrame",
-        "title": "Save Frame",
+        "title": "%openmv.command.saveFrame.title%",
         "category": "OpenMV",
         "icon": "$(save)"
       },
       {
         "command": "openmv.update",
-        "title": "Update Firmware",
+        "title": "%openmv.command.update.title%",
         "category": "OpenMV"
       },
       {
         "command": "openmv.firmware",
-        "title": "Flash Custom Firmware...",
+        "title": "%openmv.command.firmware.title%",
         "category": "OpenMV"
       },
       {
         "command": "openmv.repair",
-        "title": "Repair Firmware...",
+        "title": "%openmv.command.repair.title%",
         "category": "OpenMV"
       },
       {
         "command": "openmv.openExample",
-        "title": "Open Example",
+        "title": "%openmv.command.openExample.title%",
         "category": "OpenMV"
       },
       {
         "command": "openmv.searchExample",
-        "title": "Search Example",
+        "title": "%openmv.command.searchExample.title%",
         "category": "OpenMV",
         "icon": "$(search)"
       }
@@ -98,12 +99,12 @@
       "openmv-activitybar": [
         {
           "id": "openmv-frameView",
-          "name": "Frame",
+          "name": "%openmv.view.frame.name%",
           "type": "webview"
         },
         {
           "id": "openmv-exampleView",
-          "name": "Examples"
+          "name": "%openmv.view.examples.name%"
         }
       ]
     },
