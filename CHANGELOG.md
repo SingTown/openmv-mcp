@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.2.0](https://github.com/SingTown/openmv-mcp/compare/v2.1.0...v2.2.0) (2026-04-18)
+
+
+### Features
+
+* **server:** add camera_boot MCP tool to enter bootloader mode ([f36a01a](https://github.com/SingTown/openmv-mcp/commit/f36a01a45d0e5e5abd8f14510e7374b66b3e2f33))
+* **vscode:** add examples tree view and content search ([0f5c93d](https://github.com/SingTown/openmv-mcp/commit/0f5c93d4c4f9694ef9a399788adbba1c2befab92))
+* **vscode:** add firmware flash and repair commands ([0bed3a1](https://github.com/SingTown/openmv-mcp/commit/0bed3a1268ee018f66fde949dc79f3b84de065e6))
+* **vscode:** add status bar button to open camera drive ([7a18914](https://github.com/SingTown/openmv-mcp/commit/7a18914754619c068790fa1977eea83c2ede24b6))
+* **vscode:** download OpenMV IDE resources on activation ([53ced64](https://github.com/SingTown/openmv-mcp/commit/53ced6422cb14bce01309a87d13149fbdf34cca2))
+
 ## [2.1.0](https://github.com/SingTown/openmv-mcp/compare/v2.0.0...v2.1.0) (2026-04-16)
 
 
