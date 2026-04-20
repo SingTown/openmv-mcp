@@ -2,6 +2,35 @@
 
 An [MCP (Model Context Protocol)](https://modelcontextprotocol.io/) server for controlling OpenMV cameras over HTTP + JSON-RPC 2.0.
 
+## Install
+
+**Linux** (x86_64 / arm64):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SingTown/openmv-mcp/main/install.sh | sh
+```
+
+Pin a version or pick a different install dir:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/SingTown/openmv-mcp/main/install.sh | sh -s -- --version 2.3.1
+curl -fsSL https://raw.githubusercontent.com/SingTown/openmv-mcp/main/install.sh | sh -s -- --dir ~/.local/bin
+```
+
+**macOS** (Apple Silicon):
+
+```bash
+brew install SingTown/openmv/openmv-mcp
+```
+
+**Windows**:
+
+```powershell
+winget install SingTown.openmv-mcp
+```
+
+Or grab a prebuilt binary from the [Releases](https://github.com/SingTown/openmv-mcp/releases) page.
+
 ## Run
 
 ```bash
