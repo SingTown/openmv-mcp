@@ -51,3 +51,16 @@ jobs:
           commit-message: openmv-mcp {{version}}
         env:
           COMMITTER_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+  winget-publish:
+    needs: [release-please, build]
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: windows-latest
+    steps:
+      - uses: vedantmgoyal2009/winget-releaser@v2
+        with:
+          identifier: SingTown.openmv-mcp
+          version: ${{ needs.release-please.outputs.tag_name }}
+          installers-regex: 'windows-(x86_64|arm64)\.exe$'
+          fork-user: SingTown
+          token: ${{ secrets.WINGET_TOKEN }}
