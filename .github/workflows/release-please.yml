@@ -30,3 +30,24 @@ jobs:
     permissions:
       contents: write
     secrets: inherit
+
+  homebrew-bump:
+    needs: [release-please, build]
+    if: ${{ needs.release-please.outputs.release_created }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compute version
+        id: v
+        env:
+          TAG_NAME: ${{ needs.release-please.outputs.tag_name }}
+        run: echo "version=${TAG_NAME#v}" >> "$GITHUB_OUTPUT"
+      - uses: mislav/bump-homebrew-formula-action@v3
+        with:
+          formula-name: openmv-mcp
+          formula-path: Formula/openmv-mcp.rb
+          homebrew-tap: SingTown/homebrew-openmv
+          tag-name: ${{ needs.release-please.outputs.tag_name }}
+          download-url: https://github.com/SingTown/openmv-mcp/releases/download/${{ needs.release-please.outputs.tag_name }}/openmv_mcp_server-${{ steps.v.outputs.version }}-macos-arm64
+          commit-message: openmv-mcp {{version}}
+        env:
+          COMMITTER_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
