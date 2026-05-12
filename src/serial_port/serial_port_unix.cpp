@@ -29,7 +29,7 @@ static bool set_baud_rate(int fd, int baud) {
     // Try standard constant first (921600)
 #ifdef B921600
     if (baud == 921600) {
-        struct termios tty{};
+        struct termios tty = {};
         if (tcgetattr(fd, &tty) != 0) {
             return false;
         }
@@ -40,7 +40,7 @@ static bool set_baud_rate(int fd, int baud) {
 #endif
     // Custom baud rate via BOTHER + termios2
 #if defined(BOTHER) && defined(TCSETS2)
-    struct termios2 tty2{};
+    struct termios2 tty2 = {};
     if (ioctl(fd, TCGETS2, &tty2) < 0) {
         return false;
     }
@@ -65,7 +65,7 @@ bool SerialPort::open(const std::string& path) {
 
     ioctl(fd_, TIOCEXCL);
 
-    struct termios tty{};
+    struct termios tty = {};
     if (tcgetattr(fd_, &tty) != 0) {
         ::close(fd_);
         fd_ = -1;
@@ -150,7 +150,7 @@ bool SerialPort::recv() {
     fd_set rfds;
     FD_ZERO(&rfds);
     FD_SET(fd_, &rfds);
-    struct timeval tv{};
+    struct timeval tv = {};
     tv.tv_sec = 0;
     tv.tv_usec = 1000;  // 1ms
     if (select(fd_ + 1, &rfds, nullptr, nullptr, &tv) <= 0) return false;

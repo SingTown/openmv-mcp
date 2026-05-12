@@ -55,7 +55,6 @@ jobs:
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Check format
-        if: runner.os == 'macOS'
         run: cmake --build build --target check
 
       - name: Build server
