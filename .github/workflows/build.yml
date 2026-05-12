@@ -47,9 +47,9 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          winget install --id LLVM.LLVM --exact --silent --accept-source-agreements --accept-package-agreements --disable-interactivity
-          [Environment]::SetEnvironmentVariable("Path", $env:Path + ";C:\Program Files\LLVM\bin", "Machine")
-          echo "C:\Program Files\LLVM\bin" >> $env:GITHUB_PATH
+          $llvmBin = "C:\Program Files\LLVM\bin"
+          $env:Path = "$llvmBin;$env:Path"
+          echo $llvmBin >> $env:GITHUB_PATH
 
       - name: Configure
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release
