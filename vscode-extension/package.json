@@ -3,6 +3,7 @@
   "displayName": "OpenMV",
   "description": "%openmv.description%",
   "version": "2.3.1",
+  "packageManager": "pnpm@11.0.9",
   "publisher": "singtown",
   "l10n": "./l10n",
   "repository": {
@@ -168,7 +169,9 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "esbuild"
+      "@vscode/vsce-sign",
+      "esbuild",
+      "keytar"
     ]
   }
 }

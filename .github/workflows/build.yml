@@ -76,7 +76,7 @@ jobs:
           node-version: 22
 
       - name: Install pnpm
-        run: npm install -g pnpm
+        run: npm install -g pnpm@11.0.9
 
       - name: Install extension deps
         working-directory: vscode-extension
