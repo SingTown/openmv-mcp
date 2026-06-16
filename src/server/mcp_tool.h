@@ -31,7 +31,6 @@ struct McpTool {
     std::string description;
     json input_schema;
     ToolHandler handler;
-    bool streaming = false;
 };
 
 extern const std::vector<const McpTool*> ALL_MCP_TOOLS;
