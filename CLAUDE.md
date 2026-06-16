@@ -53,6 +53,10 @@ cmake --build build --target format   # auto-format with clang-format
 cmake --build build --target check    # check formatting (CI)
 ```
 
+## Commits
+
+Use Conventional Commits for commit messages, for example `feat: ...`, `fix: ...`, `docs: ...`, or `build: ...`.
+
 ## Architecture
 
 This is an MCP (Model Context Protocol) server for controlling OpenMV cameras. It uses **Streamable HTTP** transport (not stdio) over JSON-RPC 2.0.
