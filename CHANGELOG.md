@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.4.0](https://github.com/SingTown/openmv-mcp/compare/v2.3.1...v2.4.0) (2026-06-16)
+
+
+### Features
+
+* add install.sh for one-line Linux install ([4b2fd5a](https://github.com/SingTown/openmv-mcp/commit/4b2fd5a513af3330433ad332992737ee20b5fc4f))
+
 ## [2.3.1](https://github.com/SingTown/openmv-mcp/compare/v2.3.0...v2.3.1) (2026-04-18)
 
 
