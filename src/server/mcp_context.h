@@ -1,15 +1,12 @@
 #pragma once
 
-#include <atomic>
 #include <map>
 #include <memory>
 #include <mutex>
 #include <nlohmann/json.hpp>
-#include <optional>
 #include <ostream>
 #include <stdexcept>
 #include <string>
-#include <unordered_map>
 #include <utility>
 
 #include "camera.h"
@@ -24,8 +21,6 @@ inline void writeStreamEvent(std::ostream& os, const json& data) {
 
 class McpContext {
  public:
-    std::ostream* stream = nullptr;
-
     McpContext() = default;
     ~McpContext() {
         for (auto& [path, cam] : cameras_) {
@@ -78,52 +73,9 @@ class McpContext {
         return cam;
     }
 
-    void setProgressToken(json token) { progress_token_ = std::move(token); }
-
-    void streamProgress(uint64_t progress, std::optional<uint64_t> total, const std::string& message) {
-        if (stream == nullptr || progress_token_.is_null()) {
-            return;
-        }
-        json params = {
-            {"progressToken", progress_token_},
-            {"progress", progress},
-        };
-        if (total.has_value()) {
-            params["total"] = *total;
-        }
-        if (!message.empty()) {
-            params["message"] = message;
-        }
-        writeStreamEvent(
-            *stream, json({{"jsonrpc", "2.0"}, {"method", "notifications/progress"}, {"params", std::move(params)}}));
-    }
-
-    std::shared_ptr<std::atomic<bool>> registerCancellation(const std::string& key) {
-        auto flag = std::make_shared<std::atomic<bool>>(false);
-        std::lock_guard lock(cancellation_mutex_);
-        cancellations_[key] = flag;
-        return flag;
-    }
-
-    void unregisterCancellation(const std::string& key) {
-        std::lock_guard lock(cancellation_mutex_);
-        cancellations_.erase(key);
-    }
-
-    void cancel(const std::string& key) {
-        std::lock_guard lock(cancellation_mutex_);
-        auto it = cancellations_.find(key);
-        if (it != cancellations_.end()) {
-            it->second->store(true);
-        }
-    }
-
  private:
     mutable std::mutex cameras_mutex_;
     std::map<std::string, std::shared_ptr<Camera>> cameras_;
-    std::mutex cancellation_mutex_;
-    std::unordered_map<std::string, std::shared_ptr<std::atomic<bool>>> cancellations_;
-    json progress_token_;
 };
 
 }  // namespace mcp

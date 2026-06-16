@@ -223,50 +223,6 @@ void McpServer::setupRoutes() {
         spdlog::debug("HTTP POST /mcp request: {}", req.body);
         try {
             auto request = json::parse(req.body);
-            auto method = request.value("method", "");
-
-            if (method == "tools/call") {
-                auto params = request.value("params", json::object());
-                auto name = params.value("name", "");
-                const auto* tool = findTool(name);
-
-                if (tool != nullptr && tool->streaming) {
-                    auto id = request.value("id", json(nullptr));
-                    auto args = params.value("arguments", json::object());
-                    auto meta = params.value("_meta", json::object());
-                    auto progressToken = meta.value("progressToken", json(nullptr));
-                    auto provider = [this,
-                                     tool,
-                                     id = std::move(id),
-                                     args = std::move(args),
-                                     progressToken = std::move(progressToken)](size_t, httplib::DataSink& sink) {
-                        auto requestId = id.dump();
-                        auto cancelled = ctx_->registerCancellation(requestId);
-                        ctx_->stream = &sink.os;
-                        ctx_->setProgressToken(progressToken);
-                        try {
-                            auto resp = tool->handler(*ctx_, args, *cancelled);
-                            auto payload = makeResponse(id, {{"content", resp.toContent()}});
-                            spdlog::debug("HTTP POST /mcp stream response: {}", payload.dump());
-                            writeStreamEvent(sink.os, payload);
-                        } catch (const std::exception& e) {
-                            spdlog::error("tool '{}' threw: {}", tool->name, e.what());
-                            McpContent err;
-                            err.addText(json({{"error", std::string(e.what())}}));
-                            auto payload = makeResponse(id, {{"content", err.toContent()}, {"isError", true}});
-                            spdlog::debug("HTTP POST /mcp stream response: {}", payload.dump());
-                            writeStreamEvent(sink.os, payload);
-                        }
-                        ctx_->stream = nullptr;
-                        ctx_->setProgressToken(nullptr);
-                        ctx_->unregisterCancellation(requestId);
-                        sink.done();
-                        return true;
-                    };
-                    res.set_chunked_content_provider("text/event-stream", std::move(provider));
-                    return;
-                }
-            }
 
             res.set_header("Content-Type", "application/json");
             auto response = handleRequest(request);
@@ -330,10 +286,6 @@ json McpServer::handleRequest(const json& request) {
         return json(nullptr);
     }
     if (method == "notifications/cancelled") {
-        auto requestId = params.value("requestId", json(nullptr));
-        if (!requestId.is_null()) {
-            ctx_->cancel(requestId.dump());
-        }
         return json(nullptr);
     }
     if (method == "tools/list") {
