@@ -49,7 +49,7 @@ class McpContext {
 
     [[nodiscard]] bool hasCamera(const std::string& path) const {
         std::lock_guard lock(cameras_mutex_);
-        return cameras_.contains(path);
+        return cameras_.find(path) != cameras_.end();
     }
 
     std::shared_ptr<Camera> addCamera(const std::string& path, std::unique_ptr<Camera> camera) {

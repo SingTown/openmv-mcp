@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code and Codex when working with code in this repository.
 
 ## Install Dependencies
 
@@ -52,6 +52,10 @@ clang-tidy runs automatically during compilation (`CMAKE_CXX_CLANG_TIDY`). Disab
 cmake --build build --target format   # auto-format with clang-format
 cmake --build build --target check    # check formatting (CI)
 ```
+
+## Commits
+
+Use Conventional Commits for commit messages, for example `feat: ...`, `fix: ...`, `docs: ...`, or `build: ...`.
 
 ## Architecture
 
