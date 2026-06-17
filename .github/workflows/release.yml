@@ -1,0 +1,100 @@
+name: release
+
+on:
+  push:
+    tags:
+      - "b*"
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+      pre_release: ${{ steps.release.outputs.pre_release }}
+    steps:
+      - name: Parse tag
+        id: release
+        shell: bash
+        run: |
+          tag="${GITHUB_REF_NAME}"
+          case "$tag" in
+            b*)
+              pre_release=true
+              version="${tag#b}"
+              ;;
+            v*)
+              pre_release=false
+              version="${tag#v}"
+              ;;
+            *)
+              echo "::error::Release tags must start with b or v: ${tag}"
+              exit 1
+              ;;
+          esac
+
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Release tag must be b<major>.<minor>.<patch> or v<major>.<minor>.<patch>: ${tag}"
+            exit 1
+          fi
+
+          echo "tag_name=${tag}" >> "$GITHUB_OUTPUT"
+          echo "version=${version}" >> "$GITHUB_OUTPUT"
+          echo "pre_release=${pre_release}" >> "$GITHUB_OUTPUT"
+
+  build:
+    needs: [prepare, create-github-release]
+    uses: ./.github/workflows/build.yml
+    with:
+      release_tag: ${{ needs.prepare.outputs.tag_name }}
+      pre_release: ${{ needs.prepare.outputs.pre_release == 'true' }}
+    permissions:
+      contents: write
+    secrets: inherit
+
+  create-github-release:
+    needs: prepare
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: ${{ needs.prepare.outputs.tag_name }}
+          name: ${{ needs.prepare.outputs.tag_name }}
+          prerelease: ${{ needs.prepare.outputs.pre_release == 'true' }}
+          generate_release_notes: true
+
+  homebrew-bump:
+    needs: [prepare, build]
+    if: ${{ needs.prepare.outputs.pre_release != 'true' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: mislav/bump-homebrew-formula-action@v3
+        with:
+          formula-name: openmv-mcp
+          formula-path: Formula/openmv-mcp.rb
+          homebrew-tap: SingTown/homebrew-openmv
+          tag-name: ${{ needs.prepare.outputs.tag_name }}
+          download-url: https://github.com/SingTown/openmv-mcp/releases/download/${{ needs.prepare.outputs.tag_name }}/openmv_mcp_server-${{ needs.prepare.outputs.version }}-macos-arm64
+          commit-message: openmv-mcp {{version}}
+        env:
+          COMMITTER_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+  winget-publish:
+    needs: [prepare, build]
+    if: ${{ needs.prepare.outputs.pre_release != 'true' }}
+    runs-on: windows-latest
+    steps:
+      - uses: vedantmgoyal2009/winget-releaser@v2
+        with:
+          identifier: SingTown.openmv-mcp
+          version: ${{ needs.prepare.outputs.version }}
+          installers-regex: 'windows-(x86_64|arm64)\.exe$'
+          fork-user: SingTown
+          token: ${{ secrets.WINGET_TOKEN }}
