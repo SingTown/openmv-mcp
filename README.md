@@ -13,7 +13,7 @@ curl -fsSL https://raw.githubusercontent.com/SingTown/openmv-mcp/main/install.sh
 Pin a version or pick a different install dir:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/SingTown/openmv-mcp/main/install.sh | sh -s -- --version 2.3.1
+curl -fsSL https://raw.githubusercontent.com/SingTown/openmv-mcp/main/install.sh | sh -s -- --version 2.3.3
 curl -fsSL https://raw.githubusercontent.com/SingTown/openmv-mcp/main/install.sh | sh -s -- --dir ~/.local/bin
 ```
 
