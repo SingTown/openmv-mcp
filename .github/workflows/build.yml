@@ -4,12 +4,12 @@ on:
   workflow_call:
     inputs:
       release_tag:
-        description: "Release tag (e.g. v1.2.3 or b1.2.3). If set, uploads assets and publishes the VSIX."
+        description: "Release tag (e.g. v1.2.3 or b1.2.3). If set, uploads release assets."
         required: false
         type: string
         default: ""
       pre_release:
-        description: "Publish the VSIX and GitHub release as a pre-release."
+        description: "Publish the GitHub release as a pre-release."
         required: false
         type: boolean
         default: false
@@ -20,11 +20,11 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - { os: macos-latest,      name: macos-arm64,    vsce_target: darwin-arm64 }
-          - { os: ubuntu-latest,     name: linux-x86_64,   vsce_target: linux-x64    }
-          - { os: ubuntu-24.04-arm,  name: linux-arm64,    vsce_target: linux-arm64  }
-          - { os: windows-latest,    name: windows-x86_64, vsce_target: win32-x64    }
-          - { os: windows-11-arm,    name: windows-arm64,  vsce_target: win32-arm64  }
+          - { os: macos-latest,      name: macos-arm64    }
+          - { os: ubuntu-latest,     name: linux-x86_64   }
+          - { os: ubuntu-24.04-arm,  name: linux-arm64    }
+          - { os: windows-latest,    name: windows-x86_64 }
+          - { os: windows-11-arm,    name: windows-arm64  }
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v6
@@ -54,13 +54,8 @@ jobs:
             exit 1
           fi
 
-          package_version="$(node -p "require('./vscode-extension/package.json').version")"
           server_version="$(sed -n 's/^#define OPENMV_MCP_VERSION "\(.*\)"/\1/p' src/openmv_version.h)"
 
-          if [ "$version" != "$package_version" ]; then
-            echo "::error::Tag version ${version} does not match vscode-extension/package.json version ${package_version}"
-            exit 1
-          fi
           if [ "$version" != "$server_version" ]; then
             echo "::error::Tag version ${version} does not match src/openmv_version.h version ${server_version}"
             exit 1
@@ -102,37 +97,6 @@ jobs:
       - name: Test
         run: ctest --test-dir build --output-on-failure -C Release
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: 22
-
-      - name: Install pnpm
-        run: npm install -g pnpm@11.0.9
-
-      - name: Install extension deps
-        working-directory: vscode-extension
-        run: pnpm install
-
-      - name: Lint extension
-        if: runner.os == 'Linux'
-        working-directory: vscode-extension
-        run: pnpm run lint
-
-      - name: Build extension
-        working-directory: vscode-extension
-        run: pnpm run build
-
-      - name: Package VSIX
-        working-directory: vscode-extension
-        shell: bash
-        run: |
-          args=(pnpm run package:${{ matrix.vsce_target }})
-          if [ "${{ inputs.pre_release }}" = "true" ]; then
-            args+=(-- --pre-release)
-          fi
-          "${args[@]}"
-
       - name: Stage release assets (Unix)
         if: inputs.release_tag != '' && runner.os != 'Windows'
         shell: bash
@@ -155,16 +119,3 @@ jobs:
           prerelease: ${{ inputs.pre_release }}
           files: |
             dist/openmv_mcp_server-${{ env.VERSION }}-${{ matrix.name }}*
-
-      - name: Publish to VS Code Marketplace
-        if: inputs.release_tag != ''
-        working-directory: vscode-extension
-        shell: bash
-        env:
-          VSCE_PAT: ${{ secrets.VSCE_PAT }}
-        run: |
-          args=(pnpm exec vsce publish --no-dependencies --packagePath "openmv-${{ matrix.vsce_target }}-${VERSION}.vsix")
-          if [ "${{ inputs.pre_release }}" = "true" ]; then
-            args+=(--pre-release)
-          fi
-          "${args[@]}"

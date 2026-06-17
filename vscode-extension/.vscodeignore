@@ -1,9 +1,0 @@
-src/**
-node_modules/**
-tsconfig.json
-pnpm-lock.yaml
-biome.json
-esbuild.js
-.claude/**
-CLAUDE.md
-tools/mcp-server/**
