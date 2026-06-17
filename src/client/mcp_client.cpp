@@ -63,8 +63,8 @@ const std::vector<json>& ToolResponse::notifications() {
 // --- McpClient ---
 
 McpClient::McpClient(const std::string& host, int port) : host_(host), port_(port), client_(host, port) {
-    client_.set_connection_timeout(5);
-    client_.set_read_timeout(30);
+    client_.set_connection_timeout(1);
+    client_.set_read_timeout(1);
 }
 
 json McpClient::initialize() {

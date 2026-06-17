@@ -2,7 +2,13 @@
 
 #include <httplib/httplib.h>
 
+#include <iostream>
 #include <set>
+#include <sstream>
+#include <string>
+#include <vector>
+
+#include "stdio_proxy.h"
 
 // =======================================================================
 // Protocol tests
@@ -75,6 +81,39 @@ TEST_F(McpServerTest, UnknownMethod) {
     auto resp = json::parse(res->body);
     ASSERT_TRUE(resp.contains("error"));
     EXPECT_EQ(resp["error"]["code"], -32601);
+}
+
+TEST_F(McpServerTest, StdioProxyForwardsRequestAndDropsNotification) {
+    json initialize = {{"jsonrpc", "2.0"},
+                       {"id", 1},
+                       {"method", "initialize"},
+                       {"params",
+                        {{"protocolVersion", "2025-03-26"},
+                         {"capabilities", json::object()},
+                         {"clientInfo", {{"name", "stdio-proxy-test"}, {"version", "1.0.0"}}}}}};
+    json initialized = {{"jsonrpc", "2.0"}, {"method", "notifications/initialized"}};
+
+    std::istringstream input(initialize.dump() + "\n" + initialized.dump() + "\n");
+    std::ostringstream output;
+    auto* old_cin = std::cin.rdbuf(input.rdbuf());
+    auto* old_cout = std::cout.rdbuf(output.rdbuf());
+    EXPECT_EQ(mcp::runStdioProxy("127.0.0.1", kPort), 0);
+    std::cin.rdbuf(old_cin);
+    std::cout.rdbuf(old_cout);
+
+    std::vector<std::string> lines;
+    std::istringstream output_lines(output.str());
+    std::string line;
+    while (std::getline(output_lines, line)) {
+        if (!line.empty()) {
+            lines.push_back(line);
+        }
+    }
+
+    ASSERT_EQ(lines.size(), 1U);
+    auto response = json::parse(lines[0]);
+    EXPECT_EQ(response["id"], 1);
+    EXPECT_EQ(response["result"]["serverInfo"]["name"], "openmv-mcp-server");
 }
 
 // =======================================================================

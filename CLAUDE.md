@@ -74,5 +74,5 @@ This is an MCP (Model Context Protocol) server for controlling OpenMV cameras. I
 - **MCP Client**: `src/client/mcp_client.h/.cpp` — MCP protocol client for testing server interactions
 - **Info**: `src/info.h/.cpp` — system information and license management for OpenMV cameras
 - **Board**: `src/board.h/.cpp` — board/sensor database and USB device lookup
-- **Daemonize**: `src/daemonize.h/.cpp` — POSIX background process fork with stdout/stderr redirection
+- **Detached Process**: `src/detached_process.h/.cpp` — background HTTP server process launch with stdio redirection
 - **Utilities**: `src/utils/` — base64, CRC, ring buffer, UTF-8 buffer

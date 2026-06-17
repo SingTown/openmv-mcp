@@ -34,28 +34,40 @@ Or grab a prebuilt binary from the [Releases](https://github.com/SingTown/openmv
 ## Run
 
 ```bash
-openmv_mcp_server              # default port 15257
-openmv_mcp_server --port 9000    # custom port
-openmv_mcp_server --level trace  # verbose logging
-openmv_mcp_server --version      # print version and exit
+openmv_mcp_server             # ensure the HTTP server is running in the background
+openmv_mcp_server --port 9000 # ensure a background server on a custom port
+openmv_mcp_server --mode stdio # stdio MCP proxy; starts the HTTP server if needed
+openmv_mcp_server --level trace
+openmv_mcp_server --version   # print version and exit
 ```
 
-### Daemon mode
+### Background Server
 
-Run detached from the terminal so the server keeps running after the shell closes:
+The CLI starts the HTTP server in the background automatically and exits once it is ready. Logs are written to `./openmv-mcp-server-log.txt` by default:
 
 ```bash
-openmv_mcp_server --daemon --log /tmp/openmv.log
+openmv_mcp_server
+openmv_mcp_server --log /tmp/openmv.log  # custom log path
 ```
 
 Stop a running server:
 
 ```bash
-openmv_mcp_server --shutdown              # default port 15257
-openmv_mcp_server --shutdown --port 9000  # custom port
+openmv_mcp_server --mode shutdown              # default port 15257
+openmv_mcp_server --mode shutdown --port 9000  # custom port
 ```
 
-Flags: `--daemon, -d` (fork to background), `--shutdown` (stop the running server on the given port), `--log <path>` (redirect stdout/stderr; defaults to `/dev/null` or `NUL`), `--level <lvl>` (log level: `trace|debug|info|warn|error|critical|off`, default `info`).
+Flags: `--mode <mode>` (`shutdown`, `stdio`, or `internal_server`), `--log <path>` (write HTTP server logs to a file, default `./openmv-mcp-server-log.txt`), `--level <lvl>` (log level: `trace|debug|info|warn|error|critical|off`, default `info`).
+
+### Stdio mode
+
+Use stdio mode for MCP hosts that launch local command-based servers instead of connecting to Streamable HTTP:
+
+```bash
+openmv_mcp_server --mode stdio
+```
+
+The stdio process keeps stdin/stdout reserved for MCP JSON-RPC messages and forwards stdio requests to `POST /mcp`. It starts the HTTP server automatically if needed. Pass `--port <port>` to use a non-default server port, and `--log <path>` to override the default HTTP server log path.
 
 ## MCP Inspector
 

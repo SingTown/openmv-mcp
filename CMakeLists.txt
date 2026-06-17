@@ -14,6 +14,7 @@ endif()
 set(CORE_SOURCES
     src/server/mcp_server.cpp
     src/server/mcp_tool.cpp
+    src/stdio_proxy.cpp
     src/client/mcp_client.cpp
     src/board.cpp
     src/camera.cpp
@@ -23,7 +24,7 @@ set(CORE_SOURCES
     src/protocol/protocol_v1.cpp
     src/protocol/protocol_v2.cpp
     src/serial_port/serial_port.cpp
-    src/daemonize.cpp
+    src/detached_process.cpp
 )
 
 if(APPLE)
@@ -42,7 +43,7 @@ endif()
 
 # Common include dirs
 set(COMMON_INCLUDES src src/camera_list src/utils)
-set(THIRDPARTY_INCLUDES 3rdparty 3rdparty/nlohmann-json/single_include)
+set(THIRDPARTY_INCLUDES 3rdparty 3rdparty/nlohmann-json/single_include 3rdparty/cxxopts/include)
 
 if(MSVC)
     set(WARNING_FLAGS /W4 /WX)
@@ -105,6 +106,7 @@ set(TEST_SOURCES
     tests/frame_test.cpp
     tests/base64_test.cpp
     tests/crc_test.cpp
+    tests/detached_process_test.cpp
     tests/ring_buffer_test.cpp
     tests/utf8_buffer_test.cpp
 )
