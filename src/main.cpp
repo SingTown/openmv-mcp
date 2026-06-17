@@ -1,27 +1,79 @@
-#include <httplib/httplib.h>
+#include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
 
 #include <atomic>
 #include <csignal>
+#include <cxxopts.hpp>
 #include <exception>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 
-#include "client/mcp_client.h"
-#include "daemonize.h"
+#include "detached_process.h"
 #include "openmv_version.h"
 #include "server/mcp_server.h"
+#include "stdio_proxy.h"
 
 static std::atomic<mcp::McpServer*> g_server{nullptr};
+static constexpr int kDefaultPort = 15257;
+static constexpr const char* kDefaultLogPath = "./openmv-mcp-server-log.txt";
 
-static bool isOpenmvMcpOnPort(int port) {
-    try {
-        mcp::McpClient client("127.0.0.1", port);
-        auto info = client.initialize();
-        return info.value("serverInfo", mcp::json::object()).value("name", "") == "openmv-mcp-server";
-    } catch (const std::exception&) {
-        return false;
+struct CommandLineOptions {
+    int port = kDefaultPort;
+    std::string mode;
+    bool show_help = false;
+    bool show_version = false;
+    std::string log_path = kDefaultLogPath;
+    std::string log_level;
+    spdlog::level::level_enum log_level_value = spdlog::level::info;
+    std::string help_text;
+};
+
+static CommandLineOptions parseCommandLine(int argc, char* argv[]) {
+    cxxopts::Options parser("openmv_mcp_server", "OpenMV MCP server");
+    parser.custom_help("[OPTIONS]");
+
+    auto add_option = parser.add_options();
+    add_option("p,port", "HTTP port", cxxopts::value<int>()->default_value(std::to_string(kDefaultPort)), "<port>");
+    add_option("mode", "Run mode: shutdown|stdio|internal_server", cxxopts::value<std::string>(), "<mode>");
+    add_option("log",
+               "Write HTTP server logs to file",
+               cxxopts::value<std::string>()->default_value(kDefaultLogPath),
+               "<path>");
+    add_option("level",
+               "Log level: trace|debug|info|warn|error|critical|off",
+               cxxopts::value<std::string>()->default_value("info"),
+               "<lvl>");
+    add_option("v,version", "Print version and exit");
+    add_option("h,help", "Print help and exit");
+
+    auto parsed = parser.parse(argc, argv);
+
+    CommandLineOptions options;
+    options.show_help = parsed["help"].as<bool>();
+    options.show_version = parsed["version"].as<bool>();
+    options.help_text = parser.help({""});
+    if (options.show_help || options.show_version) {
+        return options;
     }
+
+    options.port = parsed["port"].as<int>();
+    if (parsed.count("mode") > 0) {
+        options.mode = parsed["mode"].as<std::string>();
+    }
+    options.log_path = parsed["log"].as<std::string>();
+
+    const auto level = parsed["level"].as<std::string>();
+    options.log_level_value = spdlog::level::from_str(level);
+    if (options.log_level_value == spdlog::level::off && level != "off") {
+        throw std::runtime_error("Invalid log level: " + level +
+                                 " (expected: trace|debug|info|warn|error|critical|off)");
+    }
+    if (parsed.count("level") > 0) {
+        options.log_level = level;
+    }
+
+    return options;
 }
 
 static void signalHandler(int /*sig*/) {
@@ -31,84 +83,75 @@ static void signalHandler(int /*sig*/) {
 }
 
 int main(int argc, char* argv[]) {
-    int port = 15257;
-    bool daemon_mode = false;
-    bool shutdown_mode = false;
-    std::string log_path;
-
     spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$] %v");
     spdlog::set_level(spdlog::level::info);
 
-    for (int i = 1; i < argc; ++i) {
-        std::string arg = argv[i];
-        if ((arg == "--port" || arg == "-p") && i + 1 < argc) {
-            try {
-                port = std::stoi(argv[++i]);
-            } catch (const std::exception&) {
-                spdlog::error("Invalid port number: {}", argv[i]);
-                return 1;
-            }
-        } else if (arg == "--daemon" || arg == "-d") {
-            daemon_mode = true;
-        } else if (arg == "--shutdown") {
-            shutdown_mode = true;
-        } else if (arg == "--log" && i + 1 < argc) {
-            log_path = argv[++i];
-        } else if (arg == "--level" && i + 1 < argc) {
-            std::string lv_str = argv[++i];
-            auto lv = spdlog::level::from_str(lv_str);
-            if (lv == spdlog::level::off && lv_str != "off") {
-                spdlog::error("Invalid log level: {} (expected: trace|debug|info|warn|error|critical|off)", lv_str);
-                return 1;
-            }
-            spdlog::set_level(lv);
-        } else if (arg == "--version" || arg == "-v") {
-            std::cout << OPENMV_MCP_VERSION << '\n';
-            return 0;
-        } else if (arg == "--help" || arg == "-h") {
-            std::cout << "Usage: openmv_mcp_server [OPTIONS]\n"
-                      << "  --port, -p <port>  HTTP port (default: 15257)\n"
-                      << "  --daemon, -d       Run in background\n"
-                      << "  --shutdown         Stop the running server on the given port\n"
-                      << "  --log <path>       Redirect stdout/stderr to file in daemon mode\n"
-                      << "  --level <lvl>      Log level: trace|debug|info|warn|error|critical|off (default: info)\n"
-                      << "  --version, -v      Print version and exit\n";
-            return 0;
-        }
-    }
-
-    if (shutdown_mode) {
-        if (!isOpenmvMcpOnPort(port)) {
-            spdlog::info("No openmv-mcp server running on port {}", port);
-            return 0;
-        }
-        httplib::Client cli("127.0.0.1", port);
-        auto resp = cli.Post("/shutdown", "", "application/json");
-        if (resp && resp->status == 200) {
-            spdlog::info("Stopped openmv-mcp server on port {}", port);
-            return 0;
-        }
-        spdlog::error("Failed to stop server on port {}", port);
+    CommandLineOptions options;
+    try {
+        options = parseCommandLine(argc, argv);
+    } catch (const std::exception& e) {
+        std::cerr << e.what() << '\n';
         return 1;
     }
 
-    mcp::McpServer server(port);
-    if (!server.bind()) {
-        if (isOpenmvMcpOnPort(port)) {
-            spdlog::info("openmv-mcp server already running on port {}", port);
-            return 0;
-        }
-        spdlog::error("Failed to bind port {} (already in use?)", port);
-        return 1;
+    if (options.show_help) {
+        std::cout << options.help_text;
+        return 0;
     }
 
-    if (daemon_mode) {
+    if (options.show_version) {
+        std::cout << OPENMV_MCP_VERSION << '\n';
+        return 0;
+    }
+
+    if (options.mode.empty()) {
         try {
-            mcp::daemonize(argc, argv, log_path);
+            mcp::ensureServerRunning(argv[0], options.port, options.log_path, options.log_level);
         } catch (const std::exception& e) {
-            spdlog::error("daemonize failed: {}", e.what());
+            std::cerr << e.what() << '\n';
             return 1;
         }
+        return 0;
+    }
+
+    if (options.mode == "stdio") {
+        spdlog::set_level(spdlog::level::off);
+        try {
+            mcp::ensureServerRunning(argv[0], options.port, options.log_path, options.log_level);
+        } catch (const std::exception& e) {
+            std::cerr << e.what() << '\n';
+            return 1;
+        }
+        return mcp::runStdioProxy("127.0.0.1", options.port);
+    }
+
+    if (options.mode == "shutdown") {
+        try {
+            mcp::shutdownServer(options.port);
+            spdlog::info("Stopped openmv-mcp server on port {}", options.port);
+            return 0;
+        } catch (const std::exception& e) {
+            spdlog::error("{}", e.what());
+            return 1;
+        }
+    }
+
+    if (options.mode != "internal_server") {
+        std::cerr << "Invalid mode: " << options.mode << " (expected: shutdown|stdio|internal_server)\n";
+        return 1;
+    }
+
+    if (!options.log_path.empty()) {
+        auto logger = spdlog::basic_logger_mt("openmv-mcp", options.log_path, true);
+        spdlog::set_default_logger(logger);
+    }
+    spdlog::set_pattern("[%H:%M:%S.%e][%^%L%$] %v");
+    spdlog::set_level(options.log_level_value);
+
+    mcp::McpServer server(options.port);
+    if (!server.bind()) {
+        spdlog::error("Failed to bind port {} (already in use?)", options.port);
+        return 1;
     }
 
     g_server.store(&server, std::memory_order_release);
