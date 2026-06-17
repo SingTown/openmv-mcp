@@ -1,3 +1,3 @@
 #pragma once
 
-#define OPENMV_MCP_VERSION "2.3.3"
+#define OPENMV_MCP_VERSION "2.4.0"
