@@ -125,7 +125,13 @@ jobs:
 
       - name: Package VSIX
         working-directory: vscode-extension
-        run: pnpm run package:${{ matrix.vsce_target }}
+        shell: bash
+        run: |
+          args=(pnpm run package:${{ matrix.vsce_target }})
+          if [ "${{ inputs.pre_release }}" = "true" ]; then
+            args+=(-- --pre-release)
+          fi
+          "${args[@]}"
 
       - name: Stage release assets (Unix)
         if: inputs.release_tag != '' && runner.os != 'Windows'
