@@ -122,7 +122,7 @@ TEST_F(McpServerTest, StdioProxyForwardsRequestAndDropsNotification) {
 
 TEST_F(McpServerTest, ToolsList) {
     auto tools = client_->listTools();
-    EXPECT_EQ(tools.size(), 14U);
+    EXPECT_EQ(tools.size(), 13U);
 
     std::set<std::string> names;
     for (const auto& t : tools) names.insert(t.name);
@@ -138,7 +138,6 @@ TEST_F(McpServerTest, ToolsList) {
     EXPECT_TRUE(names.count("script_running"));
     EXPECT_TRUE(names.count("frame_capture"));
     EXPECT_TRUE(names.count("frame_enable"));
-    EXPECT_TRUE(names.count("script_save"));
     EXPECT_TRUE(names.count("license_register"));
 }
 
@@ -195,11 +194,5 @@ TEST_F(McpServerTest, CameraResetNotConnected) {
 
 TEST_F(McpServerTest, CameraBootNotConnected) {
     auto result = client_->callTool("camera_boot", {{"cameraPath", "/dev/cu.nonexistent"}}).wait();
-    EXPECT_TRUE(result.is_error);
-}
-
-TEST_F(McpServerTest, ScriptSaveNotConnected) {
-    auto result =
-        client_->callTool("script_save", {{"cameraPath", "/dev/cu.nonexistent"}, {"script", "print('hello')"}}).wait();
     EXPECT_TRUE(result.is_error);
 }
