@@ -4,7 +4,7 @@
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/SingTown/openmv-mcp/main/install.sh | sh
-#   curl -fsSL https://raw.githubusercontent.com/SingTown/openmv-mcp/main/install.sh | sh -s -- --version 2.4.0
+#   curl -fsSL https://raw.githubusercontent.com/SingTown/openmv-mcp/main/install.sh | sh -s -- --version 2.5.0
 #   curl -fsSL https://raw.githubusercontent.com/SingTown/openmv-mcp/main/install.sh | sh -s -- --dir ~/.local/bin
 
 set -eu
