@@ -57,6 +57,19 @@ cmake --build build --target check    # check formatting (CI)
 
 Use Conventional Commits for commit messages, for example `feat: ...`, `fix: ...`, `docs: ...`, or `build: ...`.
 
+## Release
+
+1. Bump `OPENMV_MCP_VERSION` in `src/openmv_version.h` via a PR (`chore: bump version to X.Y.Z`) and merge it into `main`. The tag version must match this file, otherwise the release build fails its version check.
+2. Trigger the release workflow (`.github/workflows/release.yml`), either by pushing a tag:
+
+   ```bash
+   git tag vX.Y.Z && git push origin vX.Y.Z   # stable release
+   git tag bX.Y.Z && git push origin bX.Y.Z   # prerelease
+   ```
+
+   or manually without a tag: GitHub → Actions → release → Run workflow (or via API `workflow_dispatch` with input `tag`), which creates the tag automatically at the selected commit. Note: sandboxed Claude sessions cannot push tags (git proxy only allows the working branch) — use the `workflow_dispatch` path instead.
+3. The workflow then creates the GitHub Release with generated notes, builds and uploads binaries for all 5 platforms, and (stable releases only) bumps the Homebrew tap (`SingTown/homebrew-openmv`) and publishes to winget (`SingTown.openmv-mcp`).
+
 ## Architecture
 
 This is an MCP (Model Context Protocol) server for controlling OpenMV cameras. It uses **Streamable HTTP** transport (not stdio) over JSON-RPC 2.0.
