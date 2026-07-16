@@ -107,6 +107,7 @@ jobs:
         with:
           identifier: SingTown.openmv-mcp
           version: ${{ needs.prepare.outputs.version }}
+          release-tag: ${{ needs.prepare.outputs.tag_name }}
           installers-regex: 'windows-(x86_64|arm64)\.exe$'
           fork-user: SingTown
           token: ${{ secrets.WINGET_TOKEN }}

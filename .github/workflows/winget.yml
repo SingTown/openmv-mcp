@@ -1,0 +1,35 @@
+name: winget
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing stable release tag to publish to winget (v<major>.<minor>.<patch>)"
+        required: true
+        type: string
+
+jobs:
+  winget-publish:
+    runs-on: windows-latest
+    steps:
+      - name: Parse tag
+        id: release
+        shell: bash
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+        run: |
+          tag="${INPUT_TAG}"
+          if [[ ! "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::winget only publishes stable releases, tag must be v<major>.<minor>.<patch>: ${tag}"
+            exit 1
+          fi
+          echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: vedantmgoyal2009/winget-releaser@v2
+        with:
+          identifier: SingTown.openmv-mcp
+          version: ${{ steps.release.outputs.version }}
+          release-tag: ${{ inputs.tag }}
+          installers-regex: 'windows-(x86_64|arm64)\.exe$'
+          fork-user: SingTown
+          token: ${{ secrets.WINGET_TOKEN }}
