@@ -5,6 +5,7 @@
 #include <csignal>
 #include <cxxopts.hpp>
 #include <exception>
+#include <filesystem>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -16,14 +17,23 @@
 
 static std::atomic<mcp::McpServer*> g_server{nullptr};
 static constexpr int kDefaultPort = 15257;
-static constexpr const char* kDefaultLogPath = "./openmv-mcp-server-log.txt";
+static constexpr const char* kLogFileName = "openmv-mcp-server-log.txt";
+
+static std::string defaultLogPath() {
+    std::error_code ec;
+    const auto temp_dir = std::filesystem::temp_directory_path(ec);
+    if (ec) {
+        return kLogFileName;
+    }
+    return (temp_dir / kLogFileName).string();
+}
 
 struct CommandLineOptions {
     int port = kDefaultPort;
     std::string mode;
     bool show_help = false;
     bool show_version = false;
-    std::string log_path = kDefaultLogPath;
+    std::string log_path;
     std::string log_level;
     spdlog::level::level_enum log_level_value = spdlog::level::info;
     std::string help_text;
@@ -38,7 +48,7 @@ static CommandLineOptions parseCommandLine(int argc, char* argv[]) {
     add_option("mode", "Run mode: shutdown|stdio|internal_server", cxxopts::value<std::string>(), "<mode>");
     add_option("log",
                "Write HTTP server logs to file",
-               cxxopts::value<std::string>()->default_value(kDefaultLogPath),
+               cxxopts::value<std::string>()->default_value(defaultLogPath()),
                "<path>");
     add_option("level",
                "Log level: trace|debug|info|warn|error|critical|off",

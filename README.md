@@ -43,7 +43,7 @@ openmv_mcp_server --version   # print version and exit
 
 ### Background Server
 
-The CLI starts the HTTP server in the background automatically and exits once it is ready. Logs are written to `./openmv-mcp-server-log.txt` by default:
+The CLI starts the HTTP server in the background automatically and exits once it is ready. Logs are written to `openmv-mcp-server-log.txt` in the system temp directory (e.g. `/tmp` on Linux/macOS, `%TEMP%` on Windows) by default:
 
 ```bash
 openmv_mcp_server
@@ -57,7 +57,7 @@ openmv_mcp_server --mode shutdown              # default port 15257
 openmv_mcp_server --mode shutdown --port 9000  # custom port
 ```
 
-Flags: `--mode <mode>` (`shutdown`, `stdio`, or `internal_server`), `--log <path>` (write HTTP server logs to a file, default `./openmv-mcp-server-log.txt`), `--level <lvl>` (log level: `trace|debug|info|warn|error|critical|off`, default `info`).
+Flags: `--mode <mode>` (`shutdown`, `stdio`, or `internal_server`), `--log <path>` (write HTTP server logs to a file, default `openmv-mcp-server-log.txt` in the system temp directory), `--level <lvl>` (log level: `trace|debug|info|warn|error|critical|off`, default `info`).
 
 ### Stdio mode
 
